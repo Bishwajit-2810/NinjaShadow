@@ -1,6 +1,6 @@
 CC     = gcc
 CFLAGS = -Wall -O2
-LIBS   = -lGL -lGLU -lglut -lm
+LIBS   = -lGL -lGLU -lglut -lm -lopenal
 SRC    = $(wildcard src/*.c)
 TARGET = ninja_shadow
 

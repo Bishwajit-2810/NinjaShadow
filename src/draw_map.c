@@ -367,28 +367,58 @@ void draw_checkpoint(float cx, float y, int triggered, float t)
 }
 
 /* ── Exit portal ────────────────────────────────────────── */
-void draw_exit_portal(float cx, float cy, float t) {
-    /* B-15: +32 offset applied here so callers pass raw ground-y from level data */
+/* open=1: all conditions met → bright cyan/blue (passable)
+   open=0: locked         → dim red/orange (blocked)         */
+void draw_exit_portal(float cx, float cy, float t, int open) {
+    /* +32 offset applied here so callers pass raw ground-y from level data */
     cy += 32.0f;
-    /* spinning rings */
-    glColor4f(0.4f,0.8f,1.0f,0.35f+sinf(t*2)*0.1f);
-    draw_ring(cx,cy,24,32,20);
-    glColor4f(0.2f,0.6f,0.9f,0.25f);
-    draw_ring(cx,cy,16,24,16);
 
-    glPushMatrix();
-    glTranslatef(cx,cy,0);
-    glRotatef(t*60,0,0,1);
-    for (int i=0;i<8;i++) {
-        float a=i*45.0f*PI/180.0f;
-        glColor4f(0.5f,0.9f,1.0f,0.5f);
-        draw_rect_rot(cosf(a)*28,sinf(a)*28,3,10,i*45.0f);
+    float pulse = sinf(t * 2.0f) * 0.1f;
+
+    if (open) {
+        /* Active — cyan/blue */
+        glColor4f(0.4f, 0.8f, 1.0f, 0.35f + pulse);
+        draw_ring(cx, cy, 24, 32, 20);
+        glColor4f(0.2f, 0.6f, 0.9f, 0.25f);
+        draw_ring(cx, cy, 16, 24, 16);
+
+        glPushMatrix();
+        glTranslatef(cx, cy, 0);
+        glRotatef(t * 60, 0, 0, 1);
+        for (int i = 0; i < 8; i++) {
+            float a = i * 45.0f * PI / 180.0f;
+            glColor4f(0.5f, 0.9f, 1.0f, 0.5f);
+            draw_rect_rot(cosf(a) * 28, sinf(a) * 28, 3, 10, i * 45.0f);
+        }
+        glPopMatrix();
+
+        /* glow center */
+        glColor4f(0.3f, 0.7f, 1.0f, 0.4f);
+        draw_circle(cx, cy, 18, 16);
+        glColor4f(0.7f, 0.95f, 1.0f, 0.7f);
+        draw_circle(cx, cy, 8, 12);
+    } else {
+        /* Locked — dark red/orange, slow pulse, no spinning shards */
+        glColor4f(0.8f, 0.2f, 0.1f, 0.25f + pulse * 0.5f);
+        draw_ring(cx, cy, 24, 32, 20);
+        glColor4f(0.6f, 0.15f, 0.05f, 0.18f);
+        draw_ring(cx, cy, 16, 24, 16);
+
+        /* Slow-spinning crossed bars to signal "blocked" */
+        glPushMatrix();
+        glTranslatef(cx, cy, 0);
+        glRotatef(t * 20, 0, 0, 1);
+        for (int i = 0; i < 4; i++) {
+            float a = i * 90.0f * PI / 180.0f;
+            glColor4f(0.9f, 0.3f, 0.1f, 0.45f);
+            draw_rect_rot(cosf(a) * 20, sinf(a) * 20, 4, 12, i * 90.0f);
+        }
+        glPopMatrix();
+
+        /* dim red center */
+        glColor4f(0.7f, 0.15f, 0.05f, 0.35f);
+        draw_circle(cx, cy, 18, 16);
+        glColor4f(0.95f, 0.4f, 0.1f, 0.5f);
+        draw_circle(cx, cy, 8, 12);
     }
-    glPopMatrix();
-
-    /* glow center */
-    glColor4f(0.3f,0.7f,1.0f,0.4f);
-    draw_circle(cx,cy,18,16);
-    glColor4f(0.7f,0.95f,1.0f,0.7f);
-    draw_circle(cx,cy,8,12);
 }

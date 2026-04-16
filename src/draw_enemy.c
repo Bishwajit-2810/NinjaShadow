@@ -71,6 +71,7 @@ void draw_enemy_guard(float cx, float cy, int facing_right, float anim_t) {
     draw_circle(-8,8,14,14);
     glPopMatrix();
 
+    col_black(); /* restore colour state for caller */
     glPopMatrix();
 }
 
@@ -143,6 +144,7 @@ void draw_arrow(float cx, float cy, float vx, float vy) {
     glColor4f(0.6f,0.1f,0.1f,1);
     draw_tri(-16,0,-11,4,-9,0);
     draw_tri(-16,0,-11,-4,-9,0);
+    col_black(); /* restore colour state for caller */
     glPopMatrix();
 }
 
@@ -198,5 +200,6 @@ void draw_enemy_heavy(float cx, float cy, int facing_right, float anim_t) {
     glColor4f(0.2f,0.2f,0.22f,1); draw_rect(21,0,3,30);
     glPopMatrix();
 
+    col_black(); /* restore colour state for caller */
     glPopMatrix();
 }

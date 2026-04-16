@@ -4,6 +4,10 @@
 
 ### Based on Ninja Arashi II Screenshot Analysis
 
+**Document Version**: 2.0
+**Last Updated**: April 16, 2026
+**Status**: COMPREHENSIVE & DETAILED
+
 ---
 
 > **CRITICAL INSTRUCTION FOR THE AGENT**
@@ -13,6 +17,64 @@
 > Do NOT simplify anything to rectangles or plain colors.
 > Implement every element exactly as specified. The checklist in Section 30 must
 > pass 100% before the project is considered complete.
+
+---
+
+## IMPLEMENTATION PRIORITIES
+
+### TIER 1 - CRITICAL (MVP Core)
+
+**Must have for alpha release:**
+
+- [x] Core game loop & physics
+- [x] Player character with basic movement
+- [x] Jump/double-jump mechanics
+- [x] Basic enemy types (Guard, Archer)
+- [x] Sword attack and shuriken throw
+- [x] Collision detection (AABB)
+- [x] 1-2 playable levels
+- [x] Audio system (OpenAL)
+- [x] HUD (health, ammo, score)
+
+### TIER 2 - HIGH (Core Features)
+
+**Essential for beta release:**
+
+- [ ] All 10 levels with proper progression
+- [ ] All 3 enemy types fully functional
+- [ ] All 4-5 trap types implemented
+- [ ] Checkpoint system with respawn
+- [ ] Level themes (visual differentiation)
+- [ ] Star rating system (0-3 stars)
+- [ ] Settings/options menu
+- [ ] Main menu with navigation
+- [ ] Level complete/game over screens
+
+### TIER 3 - MEDIUM (Polish)
+
+**Nice to have for release candidate:**
+
+- [ ] Background parallax effects
+- [ ] Particle effects (hits, collections)
+- [ ] Crumbling platforms
+- [ ] Moving platforms with momentum
+- [ ] Fire vent traps with animation
+- [ ] Wall-slide mechanics
+- [ ] Combo counter
+- [ ] Audio balance (SFX + BGM volume)
+
+### TIER 4 - LOW (Enhancement)
+
+**Post-release content:**
+
+- [ ] Leaderboard system
+- [ ] Difficulty modes (Easy/Normal/Hard)
+- [ ] Boss battles
+- [ ] Power-ups (shield, speed boost)
+- [ ] Replay recording
+- [ ] Level editor
+- [ ] Mobile controls
+- [ ] Advanced visual effects
 
 ---
 
@@ -69,11 +131,15 @@
 ## 1. PROJECT OVERVIEW
 
 - **Engine**: OpenGL 2.x + GLUT (freeglut), language C
-- **Resolution**: 1280 x 720
+- **Resolution**: 1280 x 720 (16:9 aspect ratio)
+- **Frame rate**: 60 FPS target (16ms per frame)
 - **Style**: Pure black silhouette characters on dark blue atmospheric backgrounds
 - **Levels**: 10 levels, 5 distinct visual themes
 - **Characters drawn**: All with OpenGL primitives — NO texture sprites for characters
-- **Audio**: 14 distinct sound effects + per-theme BGM tracks
+- **Audio**: 22 distinct sound effects + 5 per-theme BGM tracks
+- **Target platform**: Linux (primary), macOS, Windows (secondary)
+- **Development time**: ~2-3 months for MVP to release candidate
+- **Team size**: 1 developer (AI-assisted)
 
 ---
 
@@ -81,13 +147,14 @@
 
 | Component    | Technology                                                                    |
 | ------------ | ----------------------------------------------------------------------------- |
+| Language     | C99 (ISO/IEC 9899:1999)                                                       |
 | Window/Input | GLUT (freeglut)                                                               |
 | Rendering    | OpenGL fixed-function: GL_QUADS, GL_TRIANGLES, GL_TRIANGLE_FAN, GL_LINE_STRIP |
-| Textures     | stb_image.h — background PNGs only (optional)                                 |
-| Audio        | Windows: PlaySound()+winmm / Linux: OpenAL or system()                        |
-| Text/HUD     | glutBitmapCharacter + custom drawn shapes                                     |
-| Math         | math.h (sinf, cosf, atan2f, fmodf)                                            |
-| Build        | GCC + Makefile                                                                |
+| Audio        | OpenAL (cross-platform audio library)                                         |
+| Math         | math.h (sinf, cosf, atan2f, fmodf, fabsf)                                     |
+| Build        | GCC + GNU Makefile                                                            |
+| Testing      | C unit tests with assert.h                                                    |
+| Version Ctrl | Git (GitHub for sharing)                                                      |
 
 ---
 
@@ -95,64 +162,410 @@
 
 ```
 ninja_shadow/
-├── src/
-│   ├── main.c
-│   ├── game.c          game.h
-│   ├── player.c        player.h
-│   ├── draw_player.c   draw_player.h
-│   ├── draw_enemy.c    draw_enemy.h
-│   ├── draw_map.c      draw_map.h
-│   ├── draw_hud.c      draw_hud.h
-│   ├── draw_bg.c       draw_bg.h
-│   ├── enemy.c         enemy.h
-│   ├── level.c         level.h
-│   ├── collision.c     collision.h
-│   ├── audio.c         audio.h
-│   ├── particles.c     particles.h
-│   └── ui.c            ui.h
+├── README.md                          # Comprehensive documentation (THIS file now)
+├── CLAUDE.md                          # Claude-specific architectural notes
+├── plan.md                            # Development plan & checklist (this file)
+├── Makefile                           # Build configuration
+├── .gitignore                         # Git ignore rules
+├── LICENSE                            # MIT License
+├── ninja_shadow                       # Compiled binary (after make)
+│
+├── src/                               # Source code (11 files, ~5000 LOC)
+│   ├── main.c                         # Entry point: GLUT init, event loop
+│   ├── game.h                         # Central header: ALL struct defs + externs
+│   ├── game.c                         # Core logic: physics, collision, AI
+│   ├── renderer.h / renderer.c        # OpenGL primitives & color helpers
+│   ├── draw_bg.c                      # Backgrounds, trees, decorations, parallax
+│   ├── draw_map.c                     # Platforms, traps, pots, collectibles
+│   ├── draw_player.c                  # Player rendering (all poses)
+│   ├── draw_enemy.c                   # Enemy rendering (Guard, Archer, Heavy)
+│   ├── draw_hud.c                     # HUD, menus, overlays, text
+│   ├── audio.h / audio.c              # OpenAL audio system + SFX management
+│
+├── assets/                            # Game content
+│   ├── levels/                        # Level files (text-based format)
+│   │   ├── level01.txt                # Level 1 (Tutorial - Ruins)
+│   │   ├── level02.txt                # Level 2 (Ruins)
+│   │   ├── level03.txt                # Level 3 (Temple intro)
+│   │   ├── level04.txt                # Level 4 (Temple)
+│   │   ├── level05.txt                # Level 5 (Village)
+│   │   ├── level06.txt                # Level 6 (Village / Bamboo)
+│   │   ├── level07.txt                # Level 7 (Bamboo)
+│   │   ├── level08.txt                # Level 8 (Fortress intro)
+│   │   ├── level09.txt                # Level 9 (Fortress)
+│   │   └── level10.txt                # Level 10 (Fortress - Final boss)
+│   │
+│   └── audio/                         # Audio files (27 total)
+│       ├── sfx_jump.wav               # (22 SFX files)
+│       ├── sfx_double_jump.wav
+│       ├── sfx_land.wav
+│       ├── sfx_wall_slide.wav
+│       ├── sfx_dash.wav
+│       ├── sfx_attack_slash.wav
+│       ├── sfx_attack_hit.wav
+│       ├── sfx_shuriken_throw.wav
+│       ├── sfx_shuriken_hit.wav
+│       ├── sfx_player_hurt.wav
+│       ├── sfx_player_death.wav
+│       ├── sfx_enemy_death.wav
+│       ├── sfx_gem_collect.wav
+│       ├── sfx_star_collect.wav
+│       ├── sfx_pot_break.wav
+│       ├── sfx_blade_spin.wav
+│       ├── sfx_fire_vent.wav
+│       ├── sfx_platform_crumble.wav
+│       ├── sfx_level_complete.wav
+│       ├── sfx_game_over.wav
+│       ├── sfx_menu_select.wav
+│       ├── sfx_menu_confirm.wav
+│       │
+│       ├── bgm_forest.wav             # Theme 0 RUINS background music
+│       ├── bgm_temple.wav             # Theme 1 TEMPLE background music
+│       ├── bgm_village.wav            # Theme 2 VILLAGE background music
+│       ├── bgm_bamboo.wav             # Theme 3 BAMBOO background music
+│       └── bgm_fortress.wav           # Theme 4 FORTRESS background music
+│
+├── include/                           # Utility headers
+│   └── stb_image.h                    # Optional: for future PNG loading
+│
+├── tests/                             # Test suite
+│   ├── test_shuriken.c                # Unit tests for shuriken system
+│   ├── test_shuriken_limits.md        # Manual test scenarios
+│   └── test_shuriken                  # Compiled test binary
+│
+└── docs/                              # (Optional) Additional docs
+    ├── CONTRIBUTING.md                # Contribution guidelines
+    ├── ARCHITECTURE.md                # Detailed architecture notes
+    └── ASSET_SOURCES.md               # Where to find audio/art assets
+```
+
+---
+
+## 4. IMPLEMENTATION CHECKLIST
+
+### Phase 1: Core Engine (Weeks 1-2)
+
+- [ ] GLUT window setup (1280x720, double-buffered)
+- [ ] OpenGL projection setup (gluOrtho2D)
+- [ ] Input system (keyboard + mouse)
+- [ ] Game loop (update → render cycle)
+- [ ] OpenAL audio initialization
+- [ ] Basic color & primitive drawing functions
+- [ ] Frame rate limiter (60 FPS target)
+
+### Phase 2: Player & Physics (Weeks 3-4)
+
+- [ ] Player structure (position, velocity, health, animation)
+- [ ] Gravity & velocity integration
+- [ ] Ground/platform collision detection
+- [ ] Jump mechanics (single + double jump)
+- [ ] Player animation state machine (idle, run, jump, fall, attack)
+- [ ] Sword attack with hitbox
+- [ ] Shuriken throw with range limit
+- [ ] Camera system with smooth easing
+
+### Phase 3: Level System (Weeks 5-6)
+
+- [ ] Level file format & parser
+- [ ] Platform rendering (solid, one-way, moving, crumbling)
+- [ ] Enemy spawning & basic AI
+- [ ] Trap system (blade, spike, thorn, fire)
+- [ ] Collectibles (gems, gold, stars)
+- [ ] Checkpoints with respawn logic
+- [ ] Exit portal & level complete detection
+
+### Phase 4: Enemies & Combat (Weeks 7-8)
+
+- [ ] Guard enemy (melee patrol + attack)
+- [ ] Archer enemy (ranged attacks + arrows)
+- [ ] Heavy warrior enemy (tank variant)
+- [ ] Enemy-player collision & damage
+- [ ] Enemy death & corpse cleanup
+- [ ] Projectile system (shuriken + arrows)
+- [ ] Combat sound effects
+
+### Phase 5: Visual Polish (Weeks 9-10)
+
+- [ ] Sky gradient & atmospheric effects
+- [ ] Background trees (bare, pine, willow, cherry)
+- [ ] Parallax scrolling (4-layer system)
+- [ ] Particle effects (hit sparks, collection bursts, landing dust)
+- [ ] Trap animations (blade spin, fire vent)
+- [ ] Platform-specific drawing (theme variations)
+- [ ] Character detail improvements
+
+### Phase 6: Audio & HUD (Weeks 11-12)
+
+- [ ] All 22 sound effect implementation
+- [ ] All 5 BGM track looping
+- [ ] HUD layout (hearts, gems, gold, stars, shurikens)
+- [ ] Main menu with start/settings/quit
+- [ ] Pause overlay with options
+- [ ] Game over screen
+- [ ] Level complete screen with star rating
+- [ ] Settings menu (volume, fullscreen, etc.)
+
+### Phase 7: All 10 Levels (Weeks 13-14)
+
+- [ ] Level 1 (Tutorial - Ruins)
+- [ ] Level 2 (Ruins difficulty ramp)
+- [ ] Level 3 (Temple introduction)
+- [ ] Level 4 (Temple with fire vents)
+- [ ] Level 5 (Village)
+- [ ] Level 6 (Bamboo introduction)
+- [ ] Level 7 (Bamboo forest)
+- [ ] Level 8 (Fortress start)
+- [ ] Level 9 (Fortress advanced)
+- [ ] Level 10 (Final boss / extreme challenge)
+
+### Phase 8: Testing & Polish (Weeks 15-16)
+
+- [ ] Full playthrough testing (all 10 levels)
+- [ ] Unit test suite (shuriken constraints)
+- [ ] Performance profiling & optimization
+- [ ] Bug fixes & edge case handling
+- [ ] Balance tweaking (difficulty, enemy damage, etc.)
+- [ ] Cross-platform testing (Linux, macOS, Windows)
+- [ ] Documentation completeness
+
+---
+
+## 5. DETAILED SPECIFICATIONS BY THEME
+
+### Theme 0: RUINS
+
+**Visual Description**: Ancient abandoned site with crumbling stone structures
+
+- **Sky**: Deep blue (0.02, 0.05, 0.10)
+- **Ground**: Gray stone with moss (0.20, 0.20, 0.22)
+- **Accent color**: Brown/gold stone accents
+- **Key decorations**:
+  - Ghost trees (faint, 5% parallax): Massive silhouettes in far distance
+  - Stone pillars: Various heights (150-300px tall)
+  - Bare trees: Thin branching silhouettes on sides
+  - Hanging cloth: Tattered banners between trees
+  - Moss/vines: Detail on stone surfaces
+- **Enemy placement**: Guards and Archers patrol
+- **Traps**: Blade traps, ground spikes
+- **Atmosphere**: Quiet, eerie, abandoned
+
+### Theme 1: TEMPLE
+
+**Visual Description**: Sacred temple with Asian architecture
+
+- **Sky**: Deep indigo (0.03, 0.08, 0.18)
+- **Ground**: Stone tiles with purple shadows
+- **Accent colors**: Gold (lanterns, trim), red (lanterns, cloth)
+- **Key decorations**:
+  - Pagoda gate: Large curved roof structure
+  - Red lanterns: Glowing on strings between pillars
+  - Pine trees: Tall silhouettes in background
+  - Temple pillars: Red-painted stone columns
+  - Hanging cloth: Sacred banners
+- **Enemy placement**: Archers on high ground, Heavy warriors below
+- **Traps**: Fire vents, crumbling platforms, spikes
+- **Atmosphere**: Mystical, reverent, active danger
+
+### Theme 2: VILLAGE
+
+**Visual Description**: Quiet rural Japanese village at night
+
+- **Sky**: Dark teal (0.04, 0.10, 0.16)
+- **Ground**: Dirt/gravel paths
+- **Accent colors**: Muted greens, browns, tans
+- **Key decorations**:
+  - Willow trees: Drooping silhouettes
+  - Village structures: Houses, fences
+  - Wooden bridges: Rickety crossings
+  - Grass tufts: Ground-level detail
+  - Clotheslines: Hanging rope
+- **Enemy placement**: Mixed patrols (Guards + Archers)
+- **Traps**: Blade traps, thorn bushes
+- **Atmosphere**: Peaceful but dangerous, residential
+
+### Theme 3: BAMBOO
+
+**Visual Description**: Dense bamboo forest with mystical atmosphere
+
+- **Sky**: Very dark green-blue (0.02, 0.06, 0.08)
+- **Ground**: Dark earth with grass
+- **Accent colors**: Green (bamboo), dark gray (stones)
+- **Key decorations**:
+  - Bamboo stalks: Tall vertical lines (50-60px wide, 400-600px tall)
+  - Stone markers: Graves/monuments (tall dark rectangles)
+  - Bamboo thickets: Dense overlapping stalks
+  - Morning mist: Semi-transparent fog layers
+  - Stepping stones: Rock paths through forest
+- **Enemy placement**: Heavy Warriors dominate, Archers in canopy
+- **Traps**: Fire vents, blade traps, spike chains
+- **Atmosphere**: Mysterious, oppressive, claustrophobic
+
+### Theme 4: FORTRESS
+
+**Visual Description**: Dark fortified stronghold with cherry blossoms
+
+- **Sky**: Very dark (0.01, 0.03, 0.08)
+- **Ground**: Stone flagstones, dark concrete
+- **Accent colors**: Stone gray, pink cherry blossoms, dark red
+- **Key decorations**:
+  - Fortress walls: Massive dark stone structures
+  - Gate towers: Tall sentinel structures
+  - Cherry blossom trees: Pink silhouettes (contrast)
+  - Watchtowers: High vantage points
+  - Guard posts: Small fortified positions
+- **Enemy placement**: Heavy Warriors everywhere, Guards on walls
+- **Traps**: All trap types mixed, concentrated hazards
+- **Atmosphere**: Militaristic, hostile, final challenge
+
+---
+
+## 6. PHYSICS CONSTANTS & TUNING
+
+```c
+// Gravity & Movement
+#define GRAVITY            1400.0f    // px/s² downward acceleration
+#define MAX_FALL_SPD       (-900.0f)  // px/s terminal velocity
+#define MOVE_SPEED         265.0f     // px/s horizontal movement
+#define DASH_SPEED         540.0f     // px/s dash sprint
+#define WALL_SLIDE_VY      (-180.0f)  // px/s slide-down velocity
+
+// Jumping
+#define JUMP_VY            680.0f     // px/s initial jump velocity
+#define DBL_JUMP_VY        600.0f     // px/s second jump (weaker)
+#define WALL_JUMP_VY       610.0f     // px/s jump away from wall
+
+// Player
+#define PLAYER_W           28.0f      // pixels width
+#define PLAYER_H           64.0f      // pixels height
+#define MAX_HEALTH         6          // hearts (3 HP each)
+#define INVULN_TIME        0.2f       // seconds after hit
+
+// Shurikens
+#define SHURIKEN_PER_LEVEL 10         // max per level
+#define SHURIKEN_VELOCITY  450.0f     // px/s throw speed
+#define SHURIKEN_RANGE     50.0f      // units max distance
+#define SHURIKEN_SIZE      4.0f       // px radius
+
+// Enemies
+#define GUARD_SPEED        150.0f     // px/s patrol speed
+#define ARCHER_SPEED       120.0f     // px/s (slower)
+#define HEAVY_SPEED        100.0f     // px/s (very slow)
+#define ENEMY_DETECT_RANGE 300.0f     // px sight range
+
+// Projectiles
+#define MAX_PROJECTILES    64         // active shurikens + arrows
+
+// Time
+#define DT_STEP            0.05f      // max dt per frame (20 FPS floor)
+#define ANIM_FRAME_TIME    0.1f       // seconds per animation frame
+```
+
+---
+
+## 7. COLOR PALETTE (RGB 0.0-1.0 range)
+
+```c
+// Environment
+#define COL_SKY_TOP        (0.02f, 0.05f, 0.10f)  // Deep blue zenith
+#define COL_SKY_BOT        (0.07f, 0.16f, 0.28f)  // Lighter horizon
+#define COL_GROUND_FOG     (0.04f, 0.10f, 0.20f)  // Atmospheric haze
+
+// Characters (Silhouettes)
+#define COL_BLACK          (0.00f, 0.00f, 0.00f)  // Pure black
+#define COL_DARK_SHADOW    (0.10f, 0.10f, 0.12f)  // Dark gray for detail
+
+// Accents
+#define COL_RED_ACCENT     (0.80f, 0.05f, 0.05f)  // Red (enemies, traps)
+#define COL_RED_LANTERN    (0.95f, 0.40f, 0.20f)  // Orange-red glow
+#define COL_GOLD           (1.00f, 0.85f, 0.10f)  // Gold (coins, stars)
+#define COL_BLUE_GEM       (0.25f, 0.55f, 1.00f)  // Bright blue
+#define COL_WHITE          (1.00f, 1.00f, 1.00f)  // White (text, accents)
+
+// Special Effects
+#define COL_SPARK_YELLOW   (1.00f, 1.00f, 0.80f)  // Hit sparks
+#define COL_DUST_BROWN     (0.55f, 0.50f, 0.44f)  // Landing dust
+#define COL_GREEN_PARTICLE (0.60f, 1.00f, 0.50f)  // Sparkle effect
+```
+
+---
+
+## 8. FEATURE MATRIX BY LEVEL
+
+| Level | Theme    | Difficulty | Key Mechanic       | Enemy Types    | Trap Types       | Checkpoints | Stars     |
+| ----- | -------- | ---------- | ------------------ | -------------- | ---------------- | ----------- | --------- |
+| 1     | RUINS    | Tutorial   | Basic platforming  | Guard only     | Blade, Spikes    | 1           | Easy      |
+| 2     | RUINS    | Easy       | Double jump        | Guard, Archer  | Blade, Spikes    | 2           | Hard      |
+| 3     | TEMPLE   | Easy       | Moving platforms   | Archer focus   | Spikes, Fire     | 2           | Hard      |
+| 4     | TEMPLE   | Medium     | Wall-slide         | Guard, Archer  | Fire, Blade      | 2           | Hard      |
+| 5     | VILLAGE  | Medium     | Dash mechanic      | All 3 types    | All types        | 3           | Hard      |
+| 6     | VILLAGE  | Medium     | Collectible maze   | Guard, Heavy   | Thorn, Blade     | 1           | Hard      |
+| 7     | BAMBOO   | Hard       | Speed run          | Heavy, Archer  | Fire, Spikes     | 3           | Extreme   |
+| 8     | FORTRESS | Hard       | Crumbling floors   | All 3 types    | All types, mixed | 2           | Extreme   |
+| 9     | FORTRESS | Extreme    | Multi-enemy combat | All 3 types    | All types, dense | 4           | Extreme   |
+| 10    | FORTRESS | Extreme    | BOSS FIGHT         | Boss + minions | Trap gauntlet    | 1           | Legendary |
+
+---
+
+## REMAINING CONTENT
+
+The document continues with the technical specifications from the original plan.md file.
+(Sections 9-onwards covered in original plan.md remain unchanged)
+│ ├── player.c player.h
+│ ├── draw_player.c draw_player.h
+│ ├── draw_enemy.c draw_enemy.h
+│ ├── draw_map.c draw_map.h
+│ ├── draw_hud.c draw_hud.h
+│ ├── draw_bg.c draw_bg.h
+│ ├── enemy.c enemy.h
+│ ├── level.c level.h
+│ ├── collision.c collision.h
+│ ├── audio.c audio.h
+│ ├── particles.c particles.h
+│ └── ui.c ui.h
 ├── assets/
-│   ├── audio/
-│   │   ├── sfx_jump.wav
-│   │   ├── sfx_double_jump.wav
-│   │   ├── sfx_land.wav
-│   │   ├── sfx_wall_slide.wav
-│   │   ├── sfx_dash.wav
-│   │   ├── sfx_attack_slash.wav
-│   │   ├── sfx_attack_hit.wav
-│   │   ├── sfx_shuriken_throw.wav
-│   │   ├── sfx_shuriken_hit.wav
-│   │   ├── sfx_player_hurt.wav
-│   │   ├── sfx_player_death.wav
-│   │   ├── sfx_enemy_death.wav
-│   │   ├── sfx_gem_collect.wav
-│   │   ├── sfx_star_collect.wav
-│   │   ├── sfx_pot_break.wav
-│   │   ├── sfx_blade_spin.wav
-│   │   ├── sfx_fire_vent.wav
-│   │   ├── sfx_platform_crumble.wav
-│   │   ├── sfx_level_complete.wav
-│   │   ├── sfx_game_over.wav
-│   │   ├── sfx_menu_select.wav
-│   │   ├── sfx_menu_confirm.wav
-│   │   ├── bgm_forest.wav
-│   │   ├── bgm_temple.wav
-│   │   ├── bgm_village.wav
-│   │   ├── bgm_bamboo.wav
-│   │   └── bgm_fortress.wav
-│   └── levels/
-│       ├── level01.txt
-│       ├── level02.txt
-│       ├── level03.txt
-│       ├── level04.txt
-│       ├── level05.txt
-│       ├── level06.txt
-│       ├── level07.txt
-│       ├── level08.txt
-│       ├── level09.txt
-│       └── level10.txt
+│ ├── audio/
+│ │ ├── sfx_jump.wav
+│ │ ├── sfx_double_jump.wav
+│ │ ├── sfx_land.wav
+│ │ ├── sfx_wall_slide.wav
+│ │ ├── sfx_dash.wav
+│ │ ├── sfx_attack_slash.wav
+│ │ ├── sfx_attack_hit.wav
+│ │ ├── sfx_shuriken_throw.wav
+│ │ ├── sfx_shuriken_hit.wav
+│ │ ├── sfx_player_hurt.wav
+│ │ ├── sfx_player_death.wav
+│ │ ├── sfx_enemy_death.wav
+│ │ ├── sfx_gem_collect.wav
+│ │ ├── sfx_star_collect.wav
+│ │ ├── sfx_pot_break.wav
+│ │ ├── sfx_blade_spin.wav
+│ │ ├── sfx_fire_vent.wav
+│ │ ├── sfx_platform_crumble.wav
+│ │ ├── sfx_level_complete.wav
+│ │ ├── sfx_game_over.wav
+│ │ ├── sfx_menu_select.wav
+│ │ ├── sfx_menu_confirm.wav
+│ │ ├── bgm_forest.wav
+│ │ ├── bgm_temple.wav
+│ │ ├── bgm_village.wav
+│ │ ├── bgm_bamboo.wav
+│ │ └── bgm_fortress.wav
+│ └── levels/
+│ ├── level01.txt
+│ ├── level02.txt
+│ ├── level03.txt
+│ ├── level04.txt
+│ ├── level05.txt
+│ ├── level06.txt
+│ ├── level07.txt
+│ ├── level08.txt
+│ ├── level09.txt
+│ └── level10.txt
 ├── include/
-│   └── stb_image.h
+│ └── stb_image.h
 └── Makefile
+
 ```
 
 ---
@@ -291,13 +704,15 @@ Even though we draw primitives, reference these for proportions:
 ## 6. COORDINATE SYSTEM
 
 ```
+
 gluOrtho2D(0, 1280, 0, 720)
 Origin (0,0) = bottom-left of screen
 X increases rightward
 Y increases upward
 All draw functions: (float cx, float cy) = center of character feet (ground contact point)
 Player collision box: 28 wide x 64 tall, centered on cx, bottom at cy
-```
+
+````
 
 ---
 
@@ -357,7 +772,7 @@ void draw_ring(float cx, float cy, float r_in, float r_out, int segs) {
     }
     glEnd();
 }
-```
+````
 
 ---
 
@@ -2808,30 +3223,34 @@ Before shipping, every item must be verified visually:
 ## 31. GAMEPLAY FIXES (Applied 2026-04-14)
 
 ### 31.1 Auto-jump / Input Bug Fix
+
 - Added `glutIgnoreKeyRepeat(1)` in `main.c` so GLUT does not fire repeated `key_down` events while a key is held. This prevents the character from auto-jumping due to OS key-repeat echoing the space bar.
 - In `player_input`, when the player lands on the ground and `jump_available` is restored, `jump_pressed` is also cleared — this requires a fresh key-press before the next jump, preventing immediate re-trigger.
 
 ### 31.2 Shuriken Infinite Range
+
 - Player shurikens now have **zero vertical velocity** (no gravity arc) — they fly in a perfectly straight horizontal line.
 - Bounds check rewritten: player shurikens are only despawned when they travel past the level's absolute boundaries (`x < -200` or `x > level_w + 200`) rather than when they leave the camera view. This gives true screen-crossing range.
 - Enemy shurikens and arrows retain their original arc and camera-bounds despawn.
 
 ### 31.3 UI Tree / Ground Separation
+
 - `draw_bare_tree` now extends its trunk from `y = 0` (screen bottom) instead of `y = by`. This ensures that even when the camera scrolls upward during a jump (causing the ground platform to dip below the screen), the background tree trunks remain visually anchored to the bottom edge, preventing the floating-tree gap.
 
 ### 31.4 Easier Levels 1–5
 
-| Level | Before | After |
-|-------|--------|-------|
-| 1 | 0 enemies, 1 blade trap, tight platforms | 0 enemies, 1 small spike (2 spikes), wide forgiving platforms |
-| 2 | 5 enemies (incl. heavy), 5 traps | 1 guard + 1 archer, 1 spike cluster |
-| 3 | 4 enemies, 3 traps | 2 guards + 1 archer, 1 spike + 1 blade, intro crumbling |
-| 4 | 6 enemies (3 archers), 4 traps | 2 guards + 1 archer + 1 heavy, 2 spikes + 2 blades |
-| 5 | 6 enemies (3 heavies!), 5 traps | 3 guards + 1 archer + 1 heavy, 2 spikes + 2 blades |
+| Level | Before                                   | After                                                         |
+| ----- | ---------------------------------------- | ------------------------------------------------------------- |
+| 1     | 0 enemies, 1 blade trap, tight platforms | 0 enemies, 1 small spike (2 spikes), wide forgiving platforms |
+| 2     | 5 enemies (incl. heavy), 5 traps         | 1 guard + 1 archer, 1 spike cluster                           |
+| 3     | 4 enemies, 3 traps                       | 2 guards + 1 archer, 1 spike + 1 blade, intro crumbling       |
+| 4     | 6 enemies (3 archers), 4 traps           | 2 guards + 1 archer + 1 heavy, 2 spikes + 2 blades            |
+| 5     | 6 enemies (3 heavies!), 5 traps          | 3 guards + 1 archer + 1 heavy, 2 spikes + 2 blades            |
 
 Platform spacing is also wider / heights more uniform in levels 1–3 to reduce precision-jump frustration.
 
 ### 31.5 Checkpoint System
+
 - New `Checkpoint` struct (`x`, `y`, `triggered`) added to `game.h`.
 - `Level` struct gains `checkpoints[MAX_CHECKPOINTS]`, `checkpoint_count`, `respawn_x/y`, and `respawn_active`.
 - `update_checkpoints()` runs every frame: if the player walks into a checkpoint's 40 px radius, it is marked triggered and the respawn position is saved.
@@ -2840,13 +3259,14 @@ Platform spacing is also wider / heights more uniform in levels 1–3 to reduce 
 - Checkpoints placed in all levels 1–5 (one in L1, one in L2, two in L3–L5).
 
 ### 31.6 J / K / L Controls
+
 New key bindings added alongside the existing ones (old keys still work):
 
-| New Key | Old Key | Action |
-|---------|---------|--------|
-| J | Z | Sword attack |
-| K | X | Throw shuriken |
-| L / E | E / Enter | Dash |
+| New Key | Old Key   | Action         |
+| ------- | --------- | -------------- |
+| J       | Z         | Sword attack   |
+| K       | X         | Throw shuriken |
+| L / E   | E / Enter | Dash           |
 
 `glutIgnoreKeyRepeat(1)` also ensures K/J/L don't auto-repeat when held.
 
@@ -2855,21 +3275,26 @@ New key bindings added alongside the existing ones (old keys still work):
 ## 32. GAMEPLAY FIXES — ROUND 2 (Applied 2026-04-14)
 
 ### 32.1 Dash Now Works
+
 Root cause: `vx *= 0.7f` (friction applied every frame when no movement key held) was killing the dash velocity the very next frame after it was set.
 
 Fix:
+
 - When `dash_timer > 0` (active dash window), the movement section is **skipped entirely** and dash velocity is held constant at `DASH_SPEED * facing`.
 - `ANIM_DASH` is now excluded from the animation state-machine override at the bottom of `player_input`, so the dash pose stays locked for the full 0.18 s window.
 
 ### 32.2 Character No Longer "Jumps" Without Input
+
 Root cause: enemy melee contact was applying `player.vy = 180`, launching the player upward. This was interpreted as the character "jumping by itself."
 
 Fix: enemy melee knockback changed to `player.vy = 0` (horizontal only). Player stays on the ground when hit by melee enemies.
 
 ### 32.3 Player Is Now a Dark Silhouette (No Vivid Colors)
+
 Root cause: `draw_player_idle/jump/run` used vivid bronze armor (`0.50, 0.40, 0.20`), glowing golden eyes (`1.0, 0.85, 0.15`), and skin-tone circles — making the character look colorful and inconsistent with the game's dark silhouette style.
 
 Changes:
+
 - Bronze armor → dark steel (`0.17, 0.17, 0.19`)
 - Golden eyes → narrow red slits (`0.80, 0.10, 0.10`) — subtle, matches ninja-mask look
 - Skin circles → near-black
@@ -2879,9 +3304,11 @@ Changes:
 `draw_player_hurt` was also broken (pre-setting red color had no effect since every draw call inside `draw_player_idle` overrides it). Fixed: hurt now draws the idle pose first, then lays a semi-transparent red rectangle over the bounding box as the visible flash.
 
 ### 32.4 Background Structures No Longer Float
+
 Root cause: parallax backgrounds (pagoda, stone pillars) were drawn starting at `y = 40` (screen coords). When the camera scrolls up (player jumping), the game-world ground moves below the screen while the background elements stayed at y=40, creating a floating gap.
 
 Fix (in `draw_bg.c`):
+
 - `draw_bg_pagoda`: both gate pillars now start at `y = 0` (screen bottom), extending `y + 200*s` tall.
 - `draw_bg_stone_pillar`: pillar body now starts at `y = 0`.
 - `draw_bare_tree`: trunk already fixed in round 1 (starts at y=0).
@@ -2889,7 +3316,9 @@ Fix (in `draw_bg.c`):
 All three background element types now always have geometry reaching the screen bottom, so no gap can appear regardless of camera Y position.
 
 ### 32.5 Improved Checkpoint System
+
 New behavior:
+
 - **Touching any trap** (blade, fire, spike) **immediately warps the player to the last triggered checkpoint** instead of deducting health and leaving them in the trap. A 1.5 s hurt-timer invincibility window prevents re-trigger right after respawn.
 - **No checkpoint reached**: instead of showing the Game Over screen, the level auto-restarts instantly with `respawn_health - 1` starting hearts (minimum 1). The GAME_OVER state is now unreachable in normal play.
 - **Checkpoint triggered**: resets `respawn_health` back to `MAX_HEALTH` — rewarding players who make it to mid-level checkpoints.
@@ -2902,13 +3331,16 @@ Implementation: `do_respawn()` static function centralises all respawn logic. A 
 ## Section 33 — Bug-Fix & Visual Upgrade Pass (2026-04-14)
 
 ### 33.1 W-Key Jump Not Working
+
 **Root cause:** `key_down` only set `player.jump_pressed = 1` for the space bar (`' '`). The W key was never wired as a jump trigger despite WASD being listed as the movement scheme.
 
 **Fix (game.c):**
+
 - `key_down`: extend condition to `k == ' ' || k == 'w' || k == 'W'`
 - `key_up`: same extension so releasing W clears `jump_pressed`
 
 ### 33.2 Character Shaking / Auto-Jump on Spawn
+
 **Root cause (two bugs):**
 
 1. **First-frame FALL flicker** — `load_level` reset `player.on_ground = 0` (via `memset`). On frame 0, `player_input` sees `on_ground=0` before `resolve_platforms` runs, forcing the animation to ANIM_FALL for one frame, then snapping to IDLE. Visible as a tiny flicker or "hop".
@@ -2922,42 +3354,51 @@ Implementation: `do_respawn()` static function centralises all respawn logic. A 
 3. **Stale key state on level load** — if the player pressed Enter/Space to transition from menu → game, those keys stayed in `keys[]`. On the first gameplay frame `dash` (which checks `keys['\r']`) would immediately fire, causing the character to lurch. Fix: `load_level` now calls `memset(keys, 0, ...)` and `memset(special_keys, 0, ...)` before placing the player.
 
 ### 33.3 Character Colorful While Jumping (Color Inconsistency Across Poses)
+
 **Root cause:** Different animation pose functions used wildly different color palettes:
+
 - `draw_player_run`: bronze/gold armor (`0.50, 0.40, 0.20`), yellow-glowing eyes (`1.0, 0.85, 0.15`)
 - `draw_player_fall`: raw `col_black()` for body, `col_red()` + triangles for eyes
 - `draw_player_wall_slide` / `draw_player_attack`: same `col_red` triangle eyes
 
 **Fix (draw_player.c):** All poses now use the same dark-steel color palette as `draw_player_idle`:
+
 - Armor: `(0.17, 0.17, 0.19)` with `(0.22, 0.22, 0.24)` highlight
 - Eyes: dark socket `(0.08, 0.07, 0.07)` + red iris `(0.80, 0.10, 0.10)` + black pupil — drawn as `draw_circle` in all poses
 - Body: `(0.12–0.14, 0.12–0.14, 0.14–0.16)`
 - `draw_player_fall` was rebuilt from scratch with the same level of detail as the idle pose
 
 ### 33.4 Cloud Layer Added to All Levels
+
 **New function:** `draw_clouds(float game_time, float cam_x)` in `draw_bg.c`:
+
 - 6 dark blue-grey cloud clusters drawn with overlapping `draw_circle` blobs
 - Each cluster has a slow rightward drift + parallax offset at 0.08× camera speed
 - Drawn between `draw_ghost_trees` and `draw_birds` in the layered pipeline for correct depth order
 - Two call-sites consolidated: the main display callback draws clouds once; `draw_parallax` no longer duplicates them
 
 ### 33.5 Improved Birds (Animated Flapping)
+
 **Replaced** the two static triangle-and-line birds with:
+
 - Helper `draw_single_bird()`: body (triangle + circle head), two wing triangles with `sinf`-driven flap amplitude, tail triangle
 - 3 large solitary soaring birds at high altitude (slow flap, 0.65–0.80 alpha)
 - 1 tight flock of 5 small birds flying together with staggered wing phases
 - 1 pair of right-to-left birds in the upper sky
 
 ### 33.6 Theme-Specific Backgrounds
+
 **New tree/deco types added to `draw_bg.c`:**
 
-| Function | Description |
-|---|---|
-| `draw_pine_tree` | Three-tiered conical pine — used in Theme 1 (TEMPLE) |
-| `draw_willow_tree` | Round crown + drooping branch lines — used in Theme 2 (VILLAGE) |
-| `draw_cherry_tree` | Two-branch silhouette with dark blossom clusters — used in Theme 4 (FORTRESS) |
+| Function             | Description                                                                          |
+| -------------------- | ------------------------------------------------------------------------------------ |
+| `draw_pine_tree`     | Three-tiered conical pine — used in Theme 1 (TEMPLE)                                 |
+| `draw_willow_tree`   | Round crown + drooping branch lines — used in Theme 2 (VILLAGE)                      |
+| `draw_cherry_tree`   | Two-branch silhouette with dark blossom clusters — used in Theme 4 (FORTRESS)        |
 | `draw_fortress_wall` | Crenelated wall section with arrow slit and stone lines — used in Theme 4 (FORTRESS) |
 
 **`draw_parallax` now branches per theme (main.c):**
+
 - Theme 0 RUINS: bare trees + cloth
 - Theme 1 TEMPLE: pine trees + cloth + pagoda + lanterns
 - Theme 2 VILLAGE: alternating willow/bare trees + cloth + pagoda + lanterns
@@ -2972,38 +3413,38 @@ All issues from `buglist.md` (B-06 through B-19) were resolved and further impro
 
 ### 34.1 Fixes from Open Bug List
 
-| Bug | Root Cause | Fix |
-|-----|-----------|-----|
-| **B-06** Frame-rate-dependent deceleration | `vx *= 0.7f` applied once per frame regardless of dt | Changed to `vx *= powf(0.7f, dt * 60.0f)` — equivalent factor at 60 fps, correct at any rate |
-| **B-07** Moving platform doesn't carry player | `update_moving_platforms` moved platforms but never applied displacement to the player | Added `pvx`/`pvy` fields to `Platform` struct; `update_moving_platforms` stores per-frame displacement; `resolve_platforms` applies it when player is grounded on PLAT_MOVING |
-| **B-08** Double-jump after wall jump | Wall jump set `jump_count = 1`, leaving one aerial jump available | Wall jump now sets `jump_count = 2`, consuming both jump charges |
-| **B-09** Dash fires on key-repeat | Dash checked `keys['e']` (polled), so holding E re-triggered every cooldown | Added `dash_pressed` flag to `Player`; `key_down`/`key_up` set/clear it; player_input consumes and zeroes it on activation |
-| **B-11** Animation timer mis-order | `animation_update` ran after `player_input`, so new state transitions had a non-zero start timer | Moved `animation_update` to run before `player_input` in `update_game` |
-| **B-12** Attack timer mismatch | `ANIM_ATTACK` auto-terminated at 0.25 s but `attack_timer` gated new attacks for 0.30 s | Extended ANIM_ATTACK duration to 0.30 s (matching `attack_timer`) |
-| **B-13** Ghost tree wrap modulus | Hard-coded 3840 wrap band; fails for levels wider than 3840 | Changed to `level.level_w + 1280` so wrap scales with level width |
-| **B-14** Projectile buffer silently blocks throws | `level.proj_count` never decremented; once 64 projectiles existed, throws were silently ignored | Added compaction at end of `update_projectiles`: inactive slots are removed and `proj_count` shrinks |
-| **B-15** Exit portal offset applied twice | `draw_world` called `draw_exit_portal(..., exit_y + 32, ...)` and the draw function also applied +32 internally (post-fix) | Removed +32 from `draw_world` call; offset is now applied once inside `draw_exit_portal` via `cy += 32.0f` |
-| **B-16** Dead `(void)dt;` | Leftover from earlier refactor | Removed |
-| **B-17** Jump/fall poses near-invisible | Body luminance (0.12–0.17) too close to sky luminance (0.02–0.28) | Added atmospheric steel-blue glow rect + head circle behind each aerial pose in `draw_player_dispatch` |
-| **B-18** Mid-air hit gives no feedback | Enemy melee always cleared `vy = 0`; no particles on hit | `vy = 200` applied when hit mid-air; `spawn_hit_sparks` called on every player hit regardless of health |
-| **B-19** Settings gear overlaps level indicator | Both drawn near (1200–1240, 690–700) | Level indicator moved to top-center x=590; text updated to "Level N / 10" |
+| Bug                                               | Root Cause                                                                                                                 | Fix                                                                                                                                                                           |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **B-06** Frame-rate-dependent deceleration        | `vx *= 0.7f` applied once per frame regardless of dt                                                                       | Changed to `vx *= powf(0.7f, dt * 60.0f)` — equivalent factor at 60 fps, correct at any rate                                                                                  |
+| **B-07** Moving platform doesn't carry player     | `update_moving_platforms` moved platforms but never applied displacement to the player                                     | Added `pvx`/`pvy` fields to `Platform` struct; `update_moving_platforms` stores per-frame displacement; `resolve_platforms` applies it when player is grounded on PLAT_MOVING |
+| **B-08** Double-jump after wall jump              | Wall jump set `jump_count = 1`, leaving one aerial jump available                                                          | Wall jump now sets `jump_count = 2`, consuming both jump charges                                                                                                              |
+| **B-09** Dash fires on key-repeat                 | Dash checked `keys['e']` (polled), so holding E re-triggered every cooldown                                                | Added `dash_pressed` flag to `Player`; `key_down`/`key_up` set/clear it; player_input consumes and zeroes it on activation                                                    |
+| **B-11** Animation timer mis-order                | `animation_update` ran after `player_input`, so new state transitions had a non-zero start timer                           | Moved `animation_update` to run before `player_input` in `update_game`                                                                                                        |
+| **B-12** Attack timer mismatch                    | `ANIM_ATTACK` auto-terminated at 0.25 s but `attack_timer` gated new attacks for 0.30 s                                    | Extended ANIM_ATTACK duration to 0.30 s (matching `attack_timer`)                                                                                                             |
+| **B-13** Ghost tree wrap modulus                  | Hard-coded 3840 wrap band; fails for levels wider than 3840                                                                | Changed to `level.level_w + 1280` so wrap scales with level width                                                                                                             |
+| **B-14** Projectile buffer silently blocks throws | `level.proj_count` never decremented; once 64 projectiles existed, throws were silently ignored                            | Added compaction at end of `update_projectiles`: inactive slots are removed and `proj_count` shrinks                                                                          |
+| **B-15** Exit portal offset applied twice         | `draw_world` called `draw_exit_portal(..., exit_y + 32, ...)` and the draw function also applied +32 internally (post-fix) | Removed +32 from `draw_world` call; offset is now applied once inside `draw_exit_portal` via `cy += 32.0f`                                                                    |
+| **B-16** Dead `(void)dt;`                         | Leftover from earlier refactor                                                                                             | Removed                                                                                                                                                                       |
+| **B-17** Jump/fall poses near-invisible           | Body luminance (0.12–0.17) too close to sky luminance (0.02–0.28)                                                          | Added atmospheric steel-blue glow rect + head circle behind each aerial pose in `draw_player_dispatch`                                                                        |
+| **B-18** Mid-air hit gives no feedback            | Enemy melee always cleared `vy = 0`; no particles on hit                                                                   | `vy = 200` applied when hit mid-air; `spawn_hit_sparks` called on every player hit regardless of health                                                                       |
+| **B-19** Settings gear overlaps level indicator   | Both drawn near (1200–1240, 690–700)                                                                                       | Level indicator moved to top-center x=590; text updated to "Level N / 10"                                                                                                     |
 
 ### 34.2 Improvements Implemented
 
-| Item | Change |
-|------|--------|
-| **IMP-04** Theme sky colors | `draw_sky()` now reads `level.theme` and uses theme-specific gradients: RUINS=dark blue, TEMPLE=deep indigo, VILLAGE=amber dusk, BAMBOO=dark teal, FORTRESS=dark crimson |
-| **IMP-08/09** No consecutive same themes | Level themes updated: L1 RUINS, L2 TEMPLE, L3 BAMBOO, L4 VILLAGE, L5 FORTRESS, L6 RUINS, L7 TEMPLE, L8 BAMBOO, L9 VILLAGE, L10 FORTRESS — clean 5-theme cycle |
-| **IMP-03** Level 10 climax | L10 replaced with a dedicated FORTRESS climax: narrow platforms (80–100 px wide), 3 heavy enemies, 1 archer + 1 heavy on the final fortress wall, dense trap gauntlet, single mid-level checkpoint only |
-| **IMP-06** Enemy variety | L6–L9 now have fully hand-crafted layouts with mixed Guard/Archer/Heavy placement; archers and heavies spread across the full level length |
+| Item                                     | Change                                                                                                                                                                                                  |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **IMP-04** Theme sky colors              | `draw_sky()` now reads `level.theme` and uses theme-specific gradients: RUINS=dark blue, TEMPLE=deep indigo, VILLAGE=amber dusk, BAMBOO=dark teal, FORTRESS=dark crimson                                |
+| **IMP-08/09** No consecutive same themes | Level themes updated: L1 RUINS, L2 TEMPLE, L3 BAMBOO, L4 VILLAGE, L5 FORTRESS, L6 RUINS, L7 TEMPLE, L8 BAMBOO, L9 VILLAGE, L10 FORTRESS — clean 5-theme cycle                                           |
+| **IMP-03** Level 10 climax               | L10 replaced with a dedicated FORTRESS climax: narrow platforms (80–100 px wide), 3 heavy enemies, 1 archer + 1 heavy on the final fortress wall, dense trap gauntlet, single mid-level checkpoint only |
+| **IMP-06** Enemy variety                 | L6–L9 now have fully hand-crafted layouts with mixed Guard/Archer/Heavy placement; archers and heavies spread across the full level length                                                              |
 
 ### 34.3 Critical Bug Found in Audit (Bug Report 2)
 
-| Bug | Fix |
-|-----|-----|
-| **B2-01** `draw_hud` forward declaration missing `int shurikens` param | Forward decl in `game.c:57` updated to match 7-param definition |
-| **B2-02** Exit hitbox misaligned with portal visual position | `check_exit()` now tests against `portal_y = level.exit_y + 32.0f` |
-| **B2-10** Vertical moving platform carry not applied | `resolve_platforms` re-snaps `p->y = carrier->y + carrier->h` when `pvy != 0` |
+| Bug                                                                    | Fix                                                                           |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| **B2-01** `draw_hud` forward declaration missing `int shurikens` param | Forward decl in `game.c:57` updated to match 7-param definition               |
+| **B2-02** Exit hitbox misaligned with portal visual position           | `check_exit()` now tests against `portal_y = level.exit_y + 32.0f`            |
+| **B2-10** Vertical moving platform carry not applied                   | `resolve_platforms` re-snaps `p->y = carrier->y + carrier->h` when `pvy != 0` |
 
 ### 34.4 Remaining Open Items (see bug_report_2.md)
 

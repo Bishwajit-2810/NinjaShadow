@@ -169,11 +169,13 @@ void draw_player_idle(float cx, float cy, int facing_right)
 void draw_player_run(float cx, float cy, int facing_right, float anim_t)
 {
     float ph = anim_t * 2 * PI;
-    float leg_swing = sinf(ph) * 24.0f;
-    float arm_swing = sinf(ph + PI) * 32.0f;
-    float body_bob = fabsf(sinf(ph)) * 5.0f;
-    float lean = sinf(ph) * 8.0f;
-    float head_tilt = sinf(ph) * 3.0f;
+    /* Offset phases by PI/2 so the legs are ALWAYS separated (never both at center) */
+    float back_swing  = sinf(ph)          * 26.0f;
+    float front_swing = sinf(ph + PI)     * 26.0f; /* exactly opposite back leg */
+    float arm_swing   = sinf(ph + PI)     * 32.0f;
+    float body_bob    = fabsf(sinf(ph))   *  5.0f;
+    float lean        = sinf(ph)          *  8.0f;
+    float head_tilt   = sinf(ph)          *  3.0f;
     cy += body_bob;
 
     glPushMatrix();
@@ -183,8 +185,8 @@ void draw_player_run(float cx, float cy, int facing_right, float anim_t)
 
     /* ── Back leg ─────────────────────────────────────────– */
     glPushMatrix();
-    glTranslatef(cx - 4, cy + 35, 0);
-    glRotatef(-leg_swing, 0, 0, 1);
+    glTranslatef(cx - 5, cy + 35, 0);  /* slightly more separated from center */
+    glRotatef(-back_swing, 0, 0, 1);
 
     glColor4f(0.12f, 0.12f, 0.14f, 1.0f);
     draw_rect(-4, -35, 8, 16);
@@ -194,15 +196,16 @@ void draw_player_run(float cx, float cy, int facing_right, float anim_t)
 
     glColor4f(0.12f, 0.12f, 0.14f, 1.0f);
     glTranslatef(0, -26, 0);
-    glRotatef(leg_swing * 0.7f, 0, 0, 1);
+    glRotatef(back_swing * 0.7f, 0, 0, 1);
     draw_rect(-3, -14, 7, 14);
-    draw_rect(-5, -16, 11, 5);
+    /* Symmetric foot: centered on shin axis */
+    draw_rect(-6, -16, 12, 5);
     glPopMatrix();
 
     /* ── Forward leg ──────────────────────────────────────– */
     glPushMatrix();
-    glTranslatef(cx + 4, cy + 35, 0);
-    glRotatef(leg_swing, 0, 0, 1);
+    glTranslatef(cx + 5, cy + 35, 0);  /* matching separation on the other side */
+    glRotatef(-front_swing, 0, 0, 1);  /* front_swing = -back_swing so always opposite */
 
     glColor4f(0.12f, 0.12f, 0.14f, 1.0f);
     draw_rect(-4, -35, 8, 16);
@@ -212,9 +215,10 @@ void draw_player_run(float cx, float cy, int facing_right, float anim_t)
 
     glColor4f(0.12f, 0.12f, 0.14f, 1.0f);
     glTranslatef(0, -26, 0);
-    glRotatef(-leg_swing * 0.7f, 0, 0, 1);
+    glRotatef(front_swing * 0.7f, 0, 0, 1);
     draw_rect(-3, -14, 7, 14);
-    draw_rect(-8, -16, 11, 5);
+    /* Same symmetric foot shape as back leg */
+    draw_rect(-6, -16, 12, 5);
     glPopMatrix();
 
     /* ── Dynamic torso ────────────────────────────────────– */
@@ -643,13 +647,10 @@ void draw_player_attack(float cx, float cy, int facing_right, float anim_t)
     glPopMatrix();
 }
 
-/* ── Hurt pose (red flash overlay) ─────────────────────── */
+/* ── Hurt pose ──────────────────────────────────────────── */
 void draw_player_hurt(float cx, float cy, int facing_right)
 {
     draw_player_idle(cx, cy, facing_right);
-    /* Semi-transparent red overlay covers the whole player bounding box */
-    glColor4f(0.95f, 0.10f, 0.10f, 0.55f);
-    draw_rect(cx - 16, cy, 32, 68);
 }
 
 /* ── Shuriken ───────────────────────────────────────────── */

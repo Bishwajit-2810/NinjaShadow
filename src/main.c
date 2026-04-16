@@ -1,5 +1,6 @@
 #include "renderer.h"
 #include "game.h"
+#include "audio.h"
 #include <stdio.h>
 
 /* ── Forward declarations of all draw functions ─────────── */
@@ -18,6 +19,7 @@ void draw_bg_pagoda(float cx, float y, float scale);
 void draw_lantern_string(float x1, float y1, float x2, float y2, int count);
 void draw_grass_tufts(float lw);
 void draw_moon(float cx, float cy, float phase, int scene_type);
+void draw_night_stars(float game_time);
 void draw_birds(float game_time, float cam_x);
 void draw_clouds(float game_time, float cam_x);
 
@@ -31,7 +33,7 @@ void draw_stone_marker(float cx, float y, float w, float h);
 void draw_rope_fence(float x, float y, float length, int post_count);
 void draw_gem(float cx, float cy, float pulse_t);
 void draw_star_collectible(float cx, float cy, float pulse_t);
-void draw_exit_portal(float cx, float cy, float t);
+void draw_exit_portal(float cx, float cy, float t, int open);
 
 void draw_player_dispatch(Player *p);
 void draw_shuriken(float cx, float cy, float angle);
@@ -46,6 +48,7 @@ void draw_main_menu(float t);
 void draw_pause_overlay(void);
 void draw_game_over_screen(void);
 void draw_level_complete(int stars);
+void draw_settings_overlay(void);
 
 void particles_draw(void);
 void key_down(unsigned char k, int x, int y);
@@ -53,6 +56,26 @@ void key_up(unsigned char k, int x, int y);
 void special_down(int k, int x, int y);
 void special_up(int k, int x, int y);
 void update_game(float dt);
+
+/* ── Mouse click handler ────────────────────────────────── */
+static void mouse_click(int button, int state, int mx, int my)
+{
+    if (button != GLUT_LEFT_BUTTON || state != GLUT_DOWN)
+        return;
+    /* GLUT y=0 is at top; flip to match our coordinate system (y=0 at bottom) */
+    float wx = (float)mx;
+    float wy = (float)(SCREEN_H - my);
+
+    /* Settings gear is drawn at (1240, 690) with radius 18 */
+    float dx = wx - 1240.0f, dy = wy - 690.0f;
+    if (dx * dx + dy * dy < 22.0f * 22.0f) /* slightly generous hit zone */
+    {
+        if (game_state == STATE_PLAYING || game_state == STATE_PAUSED)
+            game_state = STATE_SETTINGS;
+        else if (game_state == STATE_SETTINGS)
+            game_state = STATE_PLAYING;
+    }
+}
 
 /* ── Timing ─────────────────────────────────────────────── */
 static int last_ms = 0;
@@ -226,15 +249,29 @@ static void draw_world(void)
         draw_checkpoint(ck->x, ck->y, ck->triggered, game_time);
     }
 
-    /* Exit portal — +32 offset is applied inside draw_exit_portal to centre it above ground */
-    draw_exit_portal(level.exit_x, level.exit_y, game_time);
+    /* Exit portal — colour changes based on completion conditions */
+    draw_exit_portal(level.exit_x, level.exit_y, game_time, portal_is_open());
 
     /* Enemies */
     for (int i = 0; i < level.enemy_count; i++)
     {
         Enemy *e = &level.enemies[i];
+
+        /* I-08: Render dead enemies during death_timer for a fade-out effect */
         if (!e->alive)
+        {
+            if (e->death_timer <= 0)
+                continue;
+            /* Dissolve: three dark circles at body regions fade out over 0.5 s */
+            float fade_a = e->death_timer / 0.5f; /* 1→0 */
+            float r = (e->type == ENEMY_HEAVY) ? 22.0f : 18.0f;
+            glColor4f(0.05f, 0.03f, 0.06f, fade_a * 0.85f);
+            draw_circle(e->x, e->y + 14, r,        14); /* lower body */
+            draw_circle(e->x, e->y + 40, r * 1.1f, 16); /* torso */
+            draw_circle(e->x, e->y + 62, r * 0.8f, 12); /* head */
             continue;
+        }
+
         switch (e->type)
         {
         case ENEMY_GUARD:
@@ -246,16 +283,6 @@ static void draw_world(void)
         case ENEMY_HEAVY:
             draw_enemy_heavy(e->x, e->y, e->facing, e->anim_t);
             break;
-        }
-        /* Hurt-flash: red overlay drawn ON TOP of the enemy silhouette so the tint is
-           actually visible (pre-draw glColor is overridden by draw_enemy_* internals). */
-        if (e->hurt_flash > 0)
-        {
-            float fa = (e->hurt_flash / 0.2f) * 0.55f;
-            float hw = (e->type == ENEMY_HEAVY) ? 26.0f : 20.0f;
-            float hh = (e->type == ENEMY_HEAVY) ? 82.0f : 76.0f;
-            glColor4f(1.0f, 0.15f, 0.15f, fa);
-            draw_rect(e->x - hw, e->y, hw * 2.0f, hh);
         }
         /* Reset colour state before health bar so no tint leaks through */
         glColor4f(1, 1, 1, 1);
@@ -288,8 +315,15 @@ static void draw_world(void)
             draw_arrow(pr->x, pr->y, pr->vx, pr->vy);
     }
 
-    /* Player */
-    draw_player_dispatch(&player);
+    /* Player — I-01: skip every other frame during post-hit invincibility window */
+    int draw_player = 1;
+    if (player.hurt_timer > 0 && player.anim.state != ANIM_HURT && player.anim.state != ANIM_DEAD)
+    {
+        /* Blink at ~10 Hz: hide player on alternating frames to show invincibility */
+        draw_player = (fmodf(game_time * 10.0f, 1.0f) > 0.4f);
+    }
+    if (draw_player)
+        draw_player_dispatch(&player);
 
     /* Particles */
     particles_draw();
@@ -304,6 +338,9 @@ void display(void)
         dt = 0.05f;
     last_ms = now;
     game_time += dt;
+    /* A-02: Wrap at a large multiple of 2π — sinf/cosf stay precise, no discontinuity */
+    if (game_time > 2.0f * PI * 1000.0f)
+        game_time -= 2.0f * PI * 1000.0f;
 
     update_game(dt);
 
@@ -317,6 +354,8 @@ void display(void)
     {
         /* -- Background layers (no world transform) -- */
         draw_sky();
+        /* Twinkling night stars (drawn before moon so moon sits in front) */
+        draw_night_stars(game_time);
         /* Draw moon based on cycle (changes every 3 minutes of gameplay) */
         float moon_phase = fmodf(game_time / 180.0f, 1.0f); /* Full cycle every 3 min */
         draw_moon(1100.0f, 600.0f, moon_phase, level.theme);
@@ -352,6 +391,7 @@ void display(void)
     }
     case STATE_MENU:
         draw_sky();
+        draw_night_stars(game_time);
         draw_ghost_trees(0);
         draw_main_menu(game_time);
         break;
@@ -362,6 +402,13 @@ void display(void)
     case STATE_LEVEL_COMPLETE:
         draw_sky();
         draw_level_complete(stars_collected);
+        break;
+    case STATE_SETTINGS:
+        /* Re-draw the game world underneath then overlay settings panel */
+        draw_sky();
+        draw_night_stars(game_time);
+        draw_ghost_trees(camera.x);
+        draw_settings_overlay();
         break;
     }
 
@@ -393,8 +440,10 @@ int main(int argc, char **argv)
     glutKeyboardUpFunc(key_up);
     glutSpecialFunc(special_down);
     glutSpecialUpFunc(special_up);
+    glutMouseFunc(mouse_click);
     glutIgnoreKeyRepeat(1); /* Prevent auto-repeat from causing repeated jumps/throws */
 
+    audio_init(); /* silent no-op if OpenAL unavailable or files not yet placed */
     game_init();
 
     printf("==============================================\n");
@@ -410,5 +459,6 @@ int main(int argc, char **argv)
     printf("==============================================\n");
 
     glutMainLoop();
+    audio_cleanup();
     return 0;
 }

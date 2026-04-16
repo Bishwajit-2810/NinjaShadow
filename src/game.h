@@ -21,6 +21,7 @@
 #define WALL_SLIDE_VY (-180.0f)
 #define MAX_FALL_SPD (-900.0f)
 #define MAX_HEALTH 6
+#define SHURIKEN_PER_LEVEL 10
 
 /* ── Game states ────────────────────────────────────────── */
 typedef enum
@@ -29,7 +30,8 @@ typedef enum
     STATE_PLAYING,
     STATE_PAUSED,
     STATE_GAME_OVER,
-    STATE_LEVEL_COMPLETE
+    STATE_LEVEL_COMPLETE,
+    STATE_SETTINGS
 } GameState;
 
 /* ── Animation states ───────────────────────────────────── */
@@ -41,7 +43,6 @@ typedef enum
     ANIM_FALL,
     ANIM_WALL_SLIDE,
     ANIM_ATTACK,
-    ANIM_THROW,
     ANIM_DASH,
     ANIM_HURT,
     ANIM_DEAD
@@ -119,6 +120,8 @@ typedef struct
     float shoot_timer;
     int alive;
     float hurt_flash;
+    float attack_hit_timer; /* B-03: cooldown so a single sword swing can't multi-hit */
+    float death_timer;      /* I-08: counts down from 0.5 for death-fade animation */
 } Enemy;
 
 /* ── Projectile ─────────────────────────────────────────── */
@@ -258,6 +261,7 @@ extern Level level;
 extern Camera camera;
 extern Particle particles[MAX_PARTICLES];
 extern float game_time;
+extern float level_time;       /* A-02/I-09: seconds elapsed in current level */
 extern int gems_collected;
 extern int gold_collected;
 extern int stars_collected;
@@ -265,10 +269,15 @@ extern int current_level;
 extern int keys[256];
 extern int special_keys[256];
 extern int respawn_health; /* Starting health when no checkpoint was reached */
+extern int enemies_defeated;   /* I-09: count of enemies killed this level */
+extern int combo_count;        /* I-03: consecutive hit counter */
+extern float combo_timer;      /* I-03: resets to 2.0 on each hit, then counts down */
+extern float penalty_toast_timer; /* counts down while "-1 max heart" toast is visible */
 
 /* ── Function declarations ──────────────────────────────── */
 void game_init(void);
 void load_level(int num);
 void update_game(float dt);
+int  portal_is_open(void); /* 1 when all checkpoints triggered + all enemies dead */
 
 #endif /* GAME_H */

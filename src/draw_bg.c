@@ -37,6 +37,66 @@ void draw_sky(void)
     glEnd();
 }
 
+/* ── Night sky stars (twinkle effect) ──────────────────── */
+void draw_night_stars(float game_time)
+{
+    /* 48 fixed star positions spread across the sky */
+    static const float star_x[] = {
+         42, 110, 195, 278, 360, 445, 530, 615,
+        700, 785, 870, 955,1040,1125,1210,1265,
+         80, 160, 250, 340, 430, 520, 610, 700,
+        790, 880, 970,1060,1150,1240,  30, 120,
+        205, 310, 410, 510, 610, 710, 810, 910,
+       1010,1110,1180, 55, 155, 355, 655, 955
+    };
+    static const float star_y[] = {
+        680,670,690,665,675,685,668,678,
+        688,660,672,682,692,663,673,650,
+        630,640,625,635,645,628,638,648,
+        622,632,642,620,612,605,580,590,
+        570,582,592,560,572,584,564,576,
+        556,568,598,540,550,530,545,535
+    };
+    static const float star_size[] = {
+        1.5f,1.2f,1.8f,1.0f,2.0f,1.4f,1.6f,1.2f,
+        1.8f,1.0f,1.5f,2.0f,1.3f,1.7f,1.1f,1.9f,
+        1.4f,1.2f,1.8f,1.6f,1.0f,2.0f,1.3f,1.7f,
+        1.5f,1.1f,1.9f,1.4f,1.6f,1.2f,1.8f,1.0f,
+        2.0f,1.5f,1.3f,1.7f,1.1f,1.9f,1.4f,1.6f,
+        1.2f,1.8f,1.0f,2.0f,1.5f,1.3f,1.7f,1.1f
+    };
+    static const float star_phase[] = {
+        0.0f,1.2f,2.4f,0.6f,1.8f,3.0f,0.3f,1.5f,
+        2.7f,0.9f,2.1f,3.3f,0.4f,1.6f,2.8f,0.2f,
+        1.4f,2.6f,0.8f,2.0f,3.2f,0.5f,1.7f,2.9f,
+        0.1f,1.3f,2.5f,0.7f,1.9f,3.1f,0.6f,1.8f,
+        3.0f,0.4f,1.6f,2.8f,0.2f,1.4f,2.6f,0.8f,
+        2.0f,3.2f,0.5f,1.7f,2.9f,0.3f,1.1f,2.3f
+    };
+    int n = sizeof(star_x) / sizeof(star_x[0]);
+
+    /* Darker theme stars are brighter white; bright-sky themes are dimmer */
+    float base_alpha = (level.theme == 2) ? 0.25f : 0.55f; /* less visible on amber sky */
+
+    for (int i = 0; i < n; i++)
+    {
+        float twinkle = 0.5f + 0.5f * sinf(game_time * (1.2f + star_phase[i] * 0.3f) + star_phase[i]);
+        float a = base_alpha * twinkle;
+        float r = star_size[i];
+        glColor4f(1.0f, 0.95f, 0.85f, a);
+        /* Draw as a small cross for a classic star shape */
+        draw_circle(star_x[i], star_y[i], r, 6);
+        /* Small 4-point sparkle on larger stars */
+        if (r >= 1.6f && twinkle > 0.7f)
+        {
+            float s = r * 2.5f * (twinkle - 0.7f) / 0.3f;
+            glColor4f(1.0f, 1.0f, 0.90f, a * 0.5f);
+            draw_rect(star_x[i] - s, star_y[i] - 0.5f, s * 2.0f, 1.0f);
+            draw_rect(star_x[i] - 0.5f, star_y[i] - s, 1.0f, s * 2.0f);
+        }
+    }
+}
+
 /* ── Ground atmosphere fog ──────────────────────────────── */
 void draw_ground_atmosphere(void)
 {
@@ -130,20 +190,30 @@ void draw_clouds(float game_time, float cam_x)
     /* Slow parallax: clouds move at 0.08x camera */
     float ox = -cam_x * 0.08f;
 
-    /* 6 cloud clusters at different heights and speeds */
+    /* 12 cloud clusters at different heights and speeds */
     struct { float bx, by, scale, speed, alpha; } clouds[] = {
-        { 100,  620, 1.2f, 22.0f, 0.18f },
-        { 420,  650, 0.9f, 18.0f, 0.14f },
-        { 750,  600, 1.4f, 25.0f, 0.20f },
-        { 1050, 635, 1.0f, 20.0f, 0.16f },
-        { 220,  580, 0.8f, 15.0f, 0.12f },
-        { 900,  660, 1.1f, 30.0f, 0.22f },
+        {  100,  620, 1.2f, 22.0f, 0.18f },
+        {  420,  650, 0.9f, 18.0f, 0.14f },
+        {  750,  600, 1.4f, 25.0f, 0.20f },
+        { 1050,  635, 1.0f, 20.0f, 0.16f },
+        {  220,  580, 0.8f, 15.0f, 0.12f },
+        {  900,  660, 1.1f, 30.0f, 0.22f },
+        {  540,  545, 1.5f, 12.0f, 0.10f },
+        { 1180,  570, 1.0f, 17.0f, 0.13f },
+        {  320,  510, 1.3f, 10.0f, 0.09f },
+        {  800,  525, 0.7f, 28.0f, 0.11f },
+        {  650,  690, 1.6f, 35.0f, 0.24f },
+        { 1100,  500, 0.9f,  8.0f, 0.08f },
     };
     int nc = sizeof(clouds) / sizeof(clouds[0]);
 
+    /* V-06: Scale wrap width with level width so clouds don't prematurely repeat on
+       levels wider than ~3840 px (levels 7-10 are 4096 px wide). */
+    float cloud_wrap = (level.level_w > 3840.0f) ? level.level_w + 1280.0f : 3840.0f;
+
     for (int i = 0; i < nc; i++)
     {
-        float cx = fmodf(clouds[i].bx + ox + game_time * clouds[i].speed + 3840.0f, 3840.0f) - 1280.0f;
+        float cx = fmodf(clouds[i].bx + ox + game_time * clouds[i].speed + cloud_wrap, cloud_wrap) - 1280.0f;
         if (cx < -200 || cx > 1480)
             continue;
 
@@ -208,34 +278,60 @@ void draw_birds(float game_time, float cam_x)
 
     /* Large soaring black birds — slow, high up */
     struct { float ox, speed, y, scale, alpha; } large_birds[] = {
-        { 100,   80.0f, 600, 1.4f, 0.75f },
-        { 700,   65.0f, 580, 1.2f, 0.65f },
+        {  100,  80.0f, 600, 1.4f, 0.75f },
+        {  700,  65.0f, 580, 1.2f, 0.65f },
         { 1200,  90.0f, 560, 1.6f, 0.80f },
+        {  400, 100.0f, 540, 1.0f, 0.60f },
+        {  950,  55.0f, 615, 1.3f, 0.70f },
     };
-    for (int i = 0; i < 3; i++)
+    /* V-06: Bird wrap width matches level width so birds aren't absent at far-right edge */
+    float bird_wrap = (level.level_w > 1380.0f) ? 1380.0f : 1380.0f; /* screen-space wrap unchanged */
+    (void)bird_wrap; /* Birds are screen-space; 1380 covers the viewport adequately */
+
+    for (int i = 0; i < 5; i++)
     {
         float bx = fmodf(large_birds[i].ox + game_time * large_birds[i].speed, 1380.0f) - 50.0f;
         float wing_phase = game_time * 2.0f + i * 2.1f;
         draw_single_bird(bx, large_birds[i].y, large_birds[i].scale, wing_phase, large_birds[i].alpha);
     }
 
-    /* Small flock — faster, lower, tighter wing flap */
+    /* Small flock 1 — faster, mid-height */
     float flock_ox = fmodf(game_time * 130.0f, 1500.0f) - 100.0f;
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 7; i++)
     {
-        float bx = flock_ox + i * 28.0f;
+        float bx = flock_ox + i * 26.0f;
         float by = 480.0f + sinf(i * 1.3f + game_time * 1.8f) * 12.0f;
         float wing_phase = game_time * 5.5f + i * 0.6f;
         if (bx > -20 && bx < 1300)
             draw_single_bird(bx, by, 0.7f, wing_phase, 0.55f);
     }
 
+    /* Small flock 2 — second group at different height */
+    float flock2_ox = fmodf(game_time * 95.0f + 600.0f, 1500.0f) - 100.0f;
+    for (int i = 0; i < 5; i++)
+    {
+        float bx = flock2_ox + i * 30.0f;
+        float by = 520.0f + sinf(i * 1.7f + game_time * 2.2f) * 10.0f;
+        float wing_phase = game_time * 4.8f + i * 0.8f;
+        if (bx > -20 && bx < 1300)
+            draw_single_bird(bx, by, 0.65f, wing_phase, 0.45f);
+    }
+
     /* Distant right-to-left birds high in sky */
     float rtl_x = 1280.0f - fmodf(game_time * 110.0f, 1500.0f);
     if (rtl_x > -60 && rtl_x < 1340)
     {
-        draw_single_bird(rtl_x,       640.0f, 1.1f, game_time * 3.0f,       0.60f);
+        draw_single_bird(rtl_x,       640.0f, 1.1f, game_time * 3.0f,        0.60f);
         draw_single_bird(rtl_x + 35,  625.0f, 0.9f, game_time * 3.0f + 0.8f, 0.50f);
+        draw_single_bird(rtl_x + 65,  635.0f, 0.8f, game_time * 3.0f + 1.4f, 0.45f);
+    }
+
+    /* Second right-to-left group offset by half cycle */
+    float rtl2_x = 1280.0f - fmodf(game_time * 75.0f + 750.0f, 1500.0f);
+    if (rtl2_x > -60 && rtl2_x < 1340)
+    {
+        draw_single_bird(rtl2_x,      660.0f, 1.0f, game_time * 2.5f,        0.55f);
+        draw_single_bird(rtl2_x + 40, 645.0f, 0.85f, game_time * 2.5f + 1.0f, 0.45f);
     }
 }
 void draw_bare_tree(float bx, float by, float scale)
