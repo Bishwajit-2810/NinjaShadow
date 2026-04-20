@@ -27,11 +27,13 @@ static int respawn_requested = 0;
 static int enemy_hit_respawn = 0;
 
 /* ── New globals ────────────────────────────────────────── */
-float level_time      = 0;  /* seconds elapsed in this level */
-int   enemies_defeated = 0; /* enemies killed this level     */
-int   combo_count     = 0;  /* consecutive hit streak        */
-float combo_timer     = 0;  /* resets to 2.0 s per hit       */
-float penalty_toast_timer = 0.0f; /* counts down while "-1 max heart" toast is visible */
+float level_time = 0;                          /* seconds elapsed in this level */
+int enemies_defeated = 0;                      /* enemies killed this level     */
+int combo_count = 0;                           /* consecutive hit streak        */
+float combo_timer = 0;                         /* resets to 2.0 s per hit       */
+float penalty_toast_timer = 0.0f;              /* counts down while "-1 max heart" toast is visible */
+float enemy_damage_bar = ENEMY_DAMAGE_BAR_MAX; /* Enemy-only damage meter */
+float enemy_damage_bar_flash = 0.0f;           /* HUD flash feedback timer */
 
 /* Forward declarations from other files */
 void draw_player_dispatch(Player *p);
@@ -287,9 +289,10 @@ void resolve_platforms(Player *p)
         if (ovt < min_ov)
             min_ov = ovt;
 
-        if (min_ov == ovb && p->vy <= 0)
+        if (min_ov == ovb && p->vy < 0)
         {
-            /* Ground collision */
+            /* Ground collision — only when falling (vy<0) so horizontal movement
+               into a tall platform wall never triggers a spurious upward snap. */
             if (ply + plh > best_ground_y)
             {
                 best_ground_y = ply + plh;
@@ -357,10 +360,11 @@ void resolve_platforms(Player *p)
                 continue;
 
             float plat_top = pl->y + pl->h; /* top edge of platform */
-            /* 8 px snap window (B2-17): safe because all platforms have h=32.
-               If a platform thinner than 8 px is ever added, reduce this window. */
-            if (px_center > pl->x - 4 && px_center < pl->x + pl->w + 4 &&
-                p->y >= plat_top - 8 && p->y <= plat_top + 8)
+            /* 6 px snap window: player centre must be strictly within platform x-span
+               (no overhang) to prevent snapping up to an adjacent elevated platform
+               while walking horizontally. */
+            if (px_center >= pl->x && px_center <= pl->x + pl->w &&
+                p->y >= plat_top - 6 && p->y <= plat_top + 6)
             {
                 p->y = plat_top; /* snap player bottom to platform top */
                 p->vy = 0;
@@ -428,7 +432,7 @@ void player_input(Player *p, float dt)
     int left = keys['a'] || keys['A'] || special_keys[100]; /* left arrow = 100 */
     int right = keys['d'] || keys['D'] || special_keys[102];
     /* jump/dash/shuriken handled via pressed-flags to prevent key-repeat fire */
-    int atk  = keys['z'] || keys['Z'] || keys['j'] || keys['J'];
+    int atk = keys['z'] || keys['Z'] || keys['j'] || keys['J'];
 
     /* Active dash: hold constant velocity, skip normal movement friction */
     if (p->dash_timer > 0)
@@ -520,7 +524,7 @@ void player_input(Player *p, float dt)
             pr->x = p->x;
             pr->y = p->y + 38;
             pr->vx = p->anim.facing * 500.0f;
-            pr->vy = 0;   /* No gravity — perfectly straight line */
+            pr->vy = 0; /* No gravity — perfectly straight line */
             pr->active = 1;
             pr->is_shuriken = 1;
             pr->from_player = 1;
@@ -555,7 +559,7 @@ void player_input(Player *p, float dt)
 
     /* Update animation state from physics */
     if (p->anim.state != ANIM_ATTACK && p->anim.state != ANIM_HURT &&
-        p->anim.state != ANIM_DEAD  && p->anim.state != ANIM_DASH)
+        p->anim.state != ANIM_DEAD && p->anim.state != ANIM_DASH)
     {
         int new_state = p->anim.state;
         if (!p->on_ground)
@@ -612,6 +616,26 @@ static int has_los(float ax, float ay, float px, float py)
     return 1;
 }
 
+/* Enemy-only damage: enemy melee/arrows chip this meter; obstacles do not use it. */
+static int apply_enemy_damage_to_bar(float damage)
+{
+    if (player.hurt_timer > 0 || player.anim.state == ANIM_DEAD)
+        return 0;
+
+    enemy_damage_bar -= damage;
+    if (enemy_damage_bar < 0.0f)
+        enemy_damage_bar = 0.0f;
+    enemy_damage_bar_flash = 0.22f;
+
+    /* Keep brief invulnerability so one contact cannot drain multiple chunks in one frame burst. */
+    player.hurt_timer = 1.0f;
+
+    if (enemy_damage_bar <= 0.0f)
+        enemy_hit_respawn = 1;
+
+    return 1;
+}
+
 /* ── Enemy update ───────────────────────────────────────── */
 void update_enemies(float dt)
 {
@@ -638,6 +662,7 @@ void update_enemies(float dt)
 
         float dx = player.x - e->x;
         float dy = player.y - e->y;
+        int player_in_patrol_zone = (player.x >= e->patrol_l - 20.0f && player.x <= e->patrol_r + 20.0f);
 
         /* Archers: restore patrol direction from vx before the movement block.
            e->facing may have been overridden last frame for visual bow-aim; vx is
@@ -645,23 +670,26 @@ void update_enemies(float dt)
         if (e->type == ENEMY_ARCHER)
             e->facing = (e->vx >= 0.0f) ? 1 : -1;
 
+        /* Guard/Heavy only lock facing to player when player is inside this enemy's
+            patrol/guard zone. This prevents out-of-range boundary chasing behavior. */
+        if (e->type != ENEMY_ARCHER && player_in_patrol_zone && fabsf(dx) < 280.0f && fabsf(dy) < 120.0f && fabsf(dx) > 5.0f)
+            e->facing = (dx > 0) ? 1 : -1;
+
         /* Guard/Heavy aggro: charge toward player within 250 px horizontal AND
            100 px vertical — prevents chasing across different platform levels.
            Patrol bounds are enforced so enemies cannot chase off their platform.
            Player must also be within the patrol zone to trigger aggro, preventing
            enemies from jamming against their boundary when player is outside. */
-        if (e->type != ENEMY_ARCHER && fabsf(dx) > 20.0f && fabsf(dx) < 250.0f
-            && fabsf(dy) < 100.0f
-            && player.x >= e->patrol_l && player.x <= e->patrol_r)
+        if (e->type != ENEMY_ARCHER && player_in_patrol_zone && fabsf(dx) > 20.0f && fabsf(dx) < 240.0f && fabsf(dy) < 110.0f)
         {
-            /* Face the player — dead zone prevents flicker right next to the player */
-            if (fabsf(dx) > 10.0f)
-                e->facing = (dx > 0) ? 1 : -1;
-            float spd = (e->type == ENEMY_HEAVY) ? 130.0f : 160.0f;
+            /* Facing already updated above; no second update needed here */
+            float spd = (e->type == ENEMY_HEAVY) ? 105.0f : 130.0f;
             e->x += e->facing * spd * dt;
             /* Clamp within patrol bounds so aggroed enemies never leave their platform */
-            if (e->x < e->patrol_l) e->x = e->patrol_l;
-            if (e->x > e->patrol_r) e->x = e->patrol_r;
+            if (e->x < e->patrol_l)
+                e->x = e->patrol_l;
+            if (e->x > e->patrol_r)
+                e->x = e->patrol_r;
         }
         else
         {
@@ -669,14 +697,28 @@ void update_enemies(float dt)
                Archers always take this path; Guard/Heavy take it when out of aggro range.
                vx stores the persistent patrol direction so the visual-facing override
                for archers (below) cannot corrupt next-frame movement. */
-            if (e->x <= e->patrol_l) { e->facing = 1;  e->vx =  1.0f; }
-            if (e->x >= e->patrol_r) { e->facing = -1; e->vx = -1.0f; }
-            float spd = (e->type == ENEMY_HEAVY) ? 80.0f : 100.0f;
+            if (e->x <= e->patrol_l)
+            {
+                e->facing = 1;
+                e->vx = 1.0f;
+            }
+            if (e->x >= e->patrol_r)
+            {
+                e->facing = -1;
+                e->vx = -1.0f;
+            }
+            float spd = (e->type == ENEMY_HEAVY) ? 65.0f : 85.0f;
             e->x += e->facing * spd * dt;
             /* Clamp to patrol bounds — prevents overshoot on low-FPS frames */
-            if (e->x < e->patrol_l) e->x = e->patrol_l;
-            if (e->x > e->patrol_r) e->x = e->patrol_r;
+            if (e->x < e->patrol_l)
+                e->x = e->patrol_l;
+            if (e->x > e->patrol_r)
+                e->x = e->patrol_r;
         }
+
+        /* Recompute delta after movement so shooting/melee use current-frame positions. */
+        dx = player.x - e->x;
+        dy = player.y - e->y;
 
         /* Archers visually face the player (for bow aim) independently of patrol movement */
         if (e->type == ENEMY_ARCHER && fabsf(dx) > 10.0f && fabsf(dx) < 450.0f)
@@ -705,8 +747,10 @@ void update_enemies(float dt)
                         pr->vx = (dx > 0 ? 1 : -1) * 280.0f;
                         {
                             float raw_vy = (player.y + 32 - (e->y + 40)) / fabsf(dx) * 280.0f;
-                            if (raw_vy >  120.0f) raw_vy =  120.0f;
-                            if (raw_vy < -120.0f) raw_vy = -120.0f;
+                            if (raw_vy > 120.0f)
+                                raw_vy = 120.0f;
+                            if (raw_vy < -120.0f)
+                                raw_vy = -120.0f;
                             pr->vy = raw_vy;
                         }
                         pr->active = 1;
@@ -724,13 +768,14 @@ void update_enemies(float dt)
         }
 
         /* Check if player sword attack hits (B-03: one hit per swing via attack_hit_timer) */
-        if (player.anim.state == ANIM_ATTACK && player.attack_timer > 0.15f &&
+        if (player.anim.state == ANIM_ATTACK && player.attack_timer > 0.05f &&
             e->attack_hit_timer <= 0)
         {
-            float reach = 40.0f;
-            float ax = player.x + player.anim.facing * 20;
-            if (fabsf(ax - e->x) < reach && fabsf(player.y - e->y) < 70
-                && (e->x - player.x) * player.anim.facing > -10.0f)
+            float reach = 56.0f;
+            float ax = player.x + player.anim.facing * 26.0f;
+            float ay = player.y + 32.0f;
+            float ey = e->y + 32.0f;
+            if (fabsf(ax - e->x) < reach && fabsf(ay - ey) < 86.0f && (e->x - player.x) * player.anim.facing > -14.0f)
             {
                 int dmg = 2;
                 e->health -= dmg;
@@ -759,13 +804,13 @@ void update_enemies(float dt)
         if (e->type != ENEMY_ARCHER)
         {
             float mdy = (player.y + 32) - (e->y + 32);
-            if (fabsf(dx) < 40 && fabsf(mdy) < 60 && player.hurt_timer <= 0
-                && dx * e->facing > -5.0f
-                && player.x >= e->patrol_l - 20 && player.x <= e->patrol_r + 20)
+            /* Removed patrol-zone guard: enemy attacks whenever the player is
+               physically close — preventing the bug where the enemy stands at the
+               patrol edge unable to hit a player just outside the zone. */
+            if (player_in_patrol_zone && fabsf(dx) < 40 && fabsf(mdy) < 60 && dx * e->facing > -5.0f)
             {
-                spawn_hit_sparks(player.x, player.y + 32);
-                player.hurt_timer = 1.0f; /* Prevent double-hit before warp */
-                enemy_hit_respawn = 1;
+                if (apply_enemy_damage_to_bar(ENEMY_DAMAGE_PER_HIT))
+                    spawn_hit_sparks(player.x, player.y + 32);
             }
         }
     }
@@ -843,12 +888,8 @@ void update_projectiles(float dt)
         {
             if (fabsf(pr->x - player.x) < 20 && fabsf(pr->y - player.y - 32) < 50)
             {
-                if (player.hurt_timer <= 0)
-                {
+                if (apply_enemy_damage_to_bar(ENEMY_DAMAGE_PER_HIT))
                     spawn_hit_sparks(player.x, player.y + 32);
-                    player.hurt_timer = 1.0f; /* Prevent double-hit before warp */
-                    enemy_hit_respawn = 1;
-                }
                 pr->active = 0;
             }
         }
@@ -964,6 +1005,10 @@ void update_collectibles(float dt)
             c->collected = 1;
             if (c->is_star)
             {
+                /* Star rewards a full refill of both heart health and enemy-only damage bar. */
+                player.health = MAX_HEALTH;
+                enemy_damage_bar = ENEMY_DAMAGE_BAR_MAX;
+                enemy_damage_bar_flash = 0.0f;
                 stars_collected++;
                 spawn_collect_burst(c->x, c->y);
                 spawn_collect_burst(c->x + 5, c->y - 5);
@@ -1042,8 +1087,18 @@ void update_moving_platforms(float dt)
 }
 
 /* ── Portal open check ──────────────────────────────────── */
-/* Returns 1 when all checkpoints are triggered AND all enemies are dead.
-   A level with zero checkpoints / zero enemies satisfies the condition automatically. */
+/* Returns number of collected star collectibles in the current level. */
+static int collected_star_count(void)
+{
+    int total = 0;
+    for (int i = 0; i < level.coll_count; i++)
+        if (level.colls[i].is_star && level.colls[i].collected)
+            total++;
+    return total;
+}
+
+/* Returns 1 when all checkpoints are triggered, all enemies are dead,
+   and all 3 stars are collected. */
 int portal_is_open(void)
 {
     for (int i = 0; i < level.checkpoint_count; i++)
@@ -1052,13 +1107,15 @@ int portal_is_open(void)
     for (int i = 0; i < level.enemy_count; i++)
         if (level.enemies[i].alive)
             return 0;
+    if (collected_star_count() < 3)
+        return 0;
     return 1;
 }
 
 /* ── Check exit ─────────────────────────────────────────── */
 void check_exit(void)
 {
-    /* Portal is locked until all checkpoints are hit and all enemies are dead */
+    /* Portal is locked until checkpoints + enemies + all 3 stars are complete */
     if (!portal_is_open())
         return;
 
@@ -1066,12 +1123,7 @@ void check_exit(void)
     float portal_y = level.exit_y + 32.0f;
     if (fabsf(player.x - level.exit_x) < 40 && player.y < portal_y + 80 && player.y + PLAYER_H > portal_y)
     {
-        /* Count stars based on collectibles */
-        int total_stars = 0;
-        for (int i = 0; i < level.coll_count; i++)
-            if (level.colls[i].is_star && level.colls[i].collected)
-                total_stars++;
-        stars_collected = total_stars;
+        stars_collected = collected_star_count();
         game_state = STATE_LEVEL_COMPLETE;
         audio_stop_bgm();
         audio_play(SFX_LEVEL_COMPLETE);
@@ -1265,6 +1317,8 @@ void load_level(int num)
     combo_count = 0;
     combo_timer = 0;
     level_time = 0;
+    enemy_damage_bar = ENEMY_DAMAGE_BAR_MAX;
+    enemy_damage_bar_flash = 0.0f;
     current_level = num;
     camera.x = 0;
     camera.y = 0;
@@ -1385,7 +1439,7 @@ void load_level(int num)
         add_platform(2200, 240, 200, 32, PLAT_SOLID);
         add_platform(2480, 160, 200, 32, PLAT_SOLID);
         add_platform(2760, 200, 200, 32, PLAT_SOLID);
-        add_platform(3040, 140, 200, 32, PLAT_SOLID);
+        add_platform(3040, 165, 200, 32, PLAT_SOLID);
         add_platform(3320, 200, 200, 32, PLAT_SOLID);
         add_moving_plat(1500, 200, 160, 32, 0, 60, 1.0f);
         /* 3 guards + 2 archers */
@@ -1409,7 +1463,7 @@ void load_level(int num)
         add_gem(2220, 280);
         add_gem(2500, 200);
         add_gem(2780, 240);
-        add_gem(3060, 180);
+        add_gem(3060, 210);
         add_star(1080, 300);
         add_star(1920, 260);
         add_star(3040, 220);
@@ -2350,6 +2404,10 @@ void update_checkpoints(void)
             level.respawn_y = ck->y;
             level.respawn_active = 1;
             respawn_health = MAX_HEALTH; /* Reset penalty — player earned this checkpoint */
+            /* Checkpoint refill requested: fill hearts and enemy-only damage bar. */
+            player.health = MAX_HEALTH;
+            enemy_damage_bar = ENEMY_DAMAGE_BAR_MAX;
+            enemy_damage_bar_flash = 0.0f;
         }
     }
 }
@@ -2361,7 +2419,10 @@ void update_game(float dt)
         return;
 
     level_time += dt;
-    if (penalty_toast_timer > 0) penalty_toast_timer -= dt;
+    if (penalty_toast_timer > 0)
+        penalty_toast_timer -= dt;
+    if (enemy_damage_bar_flash > 0)
+        enemy_damage_bar_flash -= dt;
 
     /* I-03: Combo timer decay */
     if (combo_timer > 0)
@@ -2415,6 +2476,8 @@ void update_game(float dt)
     {
         enemy_hit_respawn = 0;
         player.health--;
+        enemy_damage_bar = ENEMY_DAMAGE_BAR_MAX; /* Reset only when enemy bar is depleted */
+        enemy_damage_bar_flash = 0.0f;
         if (player.health <= 0)
         {
             player.anim.state = ANIM_DEAD;
@@ -2492,6 +2555,17 @@ void key_down(unsigned char k, int x, int y)
         else if (game_state == STATE_SETTINGS)
             game_state = STATE_PLAYING; /* Esc closes settings */
     }
+
+    /* Teacher-demo tree modes:
+       1 = normal production trees
+       2 = primitive-only tree variant
+       3 = DDA/Bresenham/midpoint tree variant */
+    if (k == '1')
+        set_tree_demo_mode(0);
+    else if (k == '2')
+        set_tree_demo_mode(1);
+    else if (k == '3')
+        set_tree_demo_mode(2);
 
     /* Tab toggles settings overlay from any in-game state */
     if (k == '\t')

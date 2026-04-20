@@ -13,15 +13,17 @@
 /* ── Physics constants ──────────────────────────────────── */
 #define PLAYER_W 28.0f
 #define PLAYER_H 64.0f
-#define GRAVITY 1400.0f
-#define JUMP_VY 680.0f
-#define DBL_JUMP_VY 600.0f
-#define MOVE_SPEED 265.0f
-#define DASH_SPEED 540.0f
+#define GRAVITY 1180.0f
+#define JUMP_VY 590.0f
+#define DBL_JUMP_VY 520.0f
+#define MOVE_SPEED 220.0f
+#define DASH_SPEED 460.0f
 #define WALL_SLIDE_VY (-180.0f)
 #define MAX_FALL_SPD (-900.0f)
 #define MAX_HEALTH 6
 #define SHURIKEN_PER_LEVEL 10
+#define ENEMY_DAMAGE_BAR_MAX 100.0f
+#define ENEMY_DAMAGE_PER_HIT 25.0f
 
 /* ── Game states ────────────────────────────────────────── */
 typedef enum
@@ -261,23 +263,25 @@ extern Level level;
 extern Camera camera;
 extern Particle particles[MAX_PARTICLES];
 extern float game_time;
-extern float level_time;       /* A-02/I-09: seconds elapsed in current level */
+extern float level_time; /* A-02/I-09: seconds elapsed in current level */
 extern int gems_collected;
 extern int gold_collected;
 extern int stars_collected;
 extern int current_level;
 extern int keys[256];
 extern int special_keys[256];
-extern int respawn_health; /* Starting health when no checkpoint was reached */
-extern int enemies_defeated;   /* I-09: count of enemies killed this level */
-extern int combo_count;        /* I-03: consecutive hit counter */
-extern float combo_timer;      /* I-03: resets to 2.0 on each hit, then counts down */
-extern float penalty_toast_timer; /* counts down while "-1 max heart" toast is visible */
+extern int respawn_health;           /* Starting health when no checkpoint was reached */
+extern int enemies_defeated;         /* I-09: count of enemies killed this level */
+extern int combo_count;              /* I-03: consecutive hit counter */
+extern float combo_timer;            /* I-03: resets to 2.0 on each hit, then counts down */
+extern float penalty_toast_timer;    /* counts down while "-1 max heart" toast is visible */
+extern float enemy_damage_bar;       /* Enemy-only damage meter; depletes before losing one heart */
+extern float enemy_damage_bar_flash; /* Brief flash amount for HUD feedback when enemy hits */
 
 /* ── Function declarations ──────────────────────────────── */
 void game_init(void);
 void load_level(int num);
 void update_game(float dt);
-int  portal_is_open(void); /* 1 when all checkpoints triggered + all enemies dead */
+int portal_is_open(void); /* 1 when all checkpoints triggered + all enemies dead */
 
 #endif /* GAME_H */

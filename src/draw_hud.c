@@ -47,6 +47,36 @@ void draw_hud(int health, int max_health, int gems, int gold, int stars, int shu
         draw_tri(hx - 7, hy - 2, hx + 7, hy - 2, hx, hy - 11);
     }
 
+    /* ── ENEMY DAMAGE BAR (enemy-only) ───────────────── */
+    {
+        float bar_x = 100.0f;
+        float bar_y = 676.0f;
+        float bar_w = 150.0f;
+        float bar_h = 8.0f;
+        float t = enemy_damage_bar / ENEMY_DAMAGE_BAR_MAX;
+        if (t < 0.0f)
+            t = 0.0f;
+        if (t > 1.0f)
+            t = 1.0f;
+
+        glColor4f(0.16f, 0.10f, 0.10f, 0.85f);
+        draw_rect(bar_x, bar_y, bar_w, bar_h);
+
+        if (enemy_damage_bar_flash > 0.0f)
+            glColor4f(1.0f, 0.30f, 0.20f, 0.95f);
+        else
+            glColor4f(0.95f, 0.55f, 0.20f, 0.90f);
+        draw_rect(bar_x, bar_y, bar_w * t, bar_h);
+
+        glColor4f(0.80f, 0.80f, 0.85f, 0.75f);
+        glRasterPos2f(bar_x, bar_y - 12.0f);
+        {
+            const char *lbl = "Enemy Damage Bar";
+            for (const char *c = lbl; *c; c++)
+                glutBitmapCharacter(GLUT_BITMAP_HELVETICA_10, *c);
+        }
+    }
+
     /* ── GEM ICON + COUNT ─────────────────────────────── */
     float gix = 100, giy = 680;
     glColor4f(0.25f, 0.55f, 1.0f, 1);
@@ -125,7 +155,10 @@ void draw_hud(int health, int max_health, int gems, int gold, int stars, int shu
     /* Button 0: Shuriken — lit while shuriken is in flight */
     for (int i = 0; i < level.proj_count; i++)
         if (level.projs[i].active && level.projs[i].is_shuriken && level.projs[i].from_player)
-            { btn_active[0] = 1; break; }
+        {
+            btn_active[0] = 1;
+            break;
+        }
     /* Button 1: Sword attack */
     btn_active[1] = (player.anim.state == ANIM_ATTACK);
     /* Button 2: Dash */
@@ -230,9 +263,10 @@ void draw_hud(int health, int max_health, int gems, int gold, int stars, int shu
         float bar_x = (1280.0f - bar_w) * 0.5f;
         float bar_y = 712.0f; /* just below top edge */
         float progress = (level.level_w > 0)
-                         ? (player.x / level.level_w)
-                         : 0.0f;
-        if (progress > 1.0f) progress = 1.0f;
+                             ? (player.x / level.level_w)
+                             : 0.0f;
+        if (progress > 1.0f)
+            progress = 1.0f;
         /* Background track */
         glColor4f(0.25f, 0.25f, 0.30f, 0.70f);
         draw_rect(bar_x, bar_y, bar_w, bar_h);
@@ -262,7 +296,8 @@ void draw_hud(int health, int max_health, int gems, int gold, int stars, int shu
         sprintf(combo_str, "x%d COMBO!", combo_count);
         /* Fade out as timer approaches 0 */
         float alpha = combo_timer / 2.0f;
-        if (alpha > 1.0f) alpha = 1.0f;
+        if (alpha > 1.0f)
+            alpha = 1.0f;
         /* Pulsing scale effect using combo_timer */
         float pulse = 1.0f + 0.1f * sinf(combo_timer * 15.0f);
         (void)pulse; /* used for visual cue via colour intensity */
@@ -510,13 +545,13 @@ void draw_settings_overlay(void)
     /* Control bindings */
     glColor4f(0.75f, 0.80f, 0.85f, 0.85f);
     const char *bindings[][2] = {
-        { "Move Left / Right",   "Arrow Keys  /  A D" },
-        { "Jump  (double jump)", "Space  /  W  /  Up Arrow" },
-        { "Sword Attack",        "Z  /  J" },
-        { "Throw Shuriken",      "X  /  K" },
-        { "Dash",                "E  /  L  /  Enter" },
-        { "Pause",               "P  /  Esc" },
-        { "Settings",            "Tab  (this screen)" },
+        {"Move Left / Right", "Arrow Keys  /  A D"},
+        {"Jump  (double jump)", "Space  /  W  /  Up Arrow"},
+        {"Sword Attack", "Z  /  J"},
+        {"Throw Shuriken", "X  /  K"},
+        {"Dash", "E  /  L  /  Enter"},
+        {"Pause", "P  /  Esc"},
+        {"Settings", "Tab  (this screen)"},
     };
     int nb = sizeof(bindings) / sizeof(bindings[0]);
     for (int i = 0; i < nb; i++)

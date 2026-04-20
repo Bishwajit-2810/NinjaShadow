@@ -2,6 +2,88 @@
 #include "game.h"
 #include <math.h>
 
+/* Teacher demonstration modes for tree rendering.
+   0 = normal production trees, 1 = primitive-only tree, 2 = DDA/Bresenham tree. */
+static int tree_demo_mode = 0;
+
+void set_tree_demo_mode(int mode)
+{
+    if (mode < 0 || mode > 2)
+        return;
+    tree_demo_mode = mode;
+}
+
+int get_tree_demo_mode(void)
+{
+    return tree_demo_mode;
+}
+
+/* Manual primitive tree: intentionally uses direct glBegin/glVertex blocks only. */
+static void draw_tree_manual_primitive(float bx, float by, float scale)
+{
+    float s = scale;
+
+    glColor4f(0.16f, 0.11f, 0.08f, 1.0f);
+    glBegin(GL_QUADS);
+    glVertex2f(bx - 6 * s, 0);
+    glVertex2f(bx + 6 * s, 0);
+    glVertex2f(bx + 4 * s, by + 92 * s);
+    glVertex2f(bx - 4 * s, by + 92 * s);
+    glEnd();
+
+    glColor4f(0.08f, 0.30f, 0.10f, 1.0f);
+    glBegin(GL_TRIANGLES);
+    glVertex2f(bx - 42 * s, by + 76 * s);
+    glVertex2f(bx + 42 * s, by + 76 * s);
+    glVertex2f(bx, by + 132 * s);
+
+    glVertex2f(bx - 34 * s, by + 102 * s);
+    glVertex2f(bx + 34 * s, by + 102 * s);
+    glVertex2f(bx, by + 154 * s);
+
+    glVertex2f(bx - 24 * s, by + 126 * s);
+    glVertex2f(bx + 24 * s, by + 126 * s);
+    glVertex2f(bx, by + 174 * s);
+    glEnd();
+
+    glColor4f(0.10f, 0.23f, 0.08f, 1.0f);
+    glLineWidth(2.0f * s);
+    glBegin(GL_LINES);
+    glVertex2f(bx, by + 90 * s);
+    glVertex2f(bx - 20 * s, by + 120 * s);
+    glVertex2f(bx, by + 95 * s);
+    glVertex2f(bx + 20 * s, by + 122 * s);
+    glEnd();
+    glLineWidth(1.0f);
+}
+
+/* Algorithm tree: trunk with primitives, branches with DDA/Bresenham, foliage with midpoint circles. */
+static void draw_tree_algorithmic(float bx, float by, float scale)
+{
+    float s = scale;
+
+    glColor4f(0.16f, 0.11f, 0.08f, 1.0f);
+    glBegin(GL_QUADS);
+    glVertex2f(bx - 5 * s, 0);
+    glVertex2f(bx + 5 * s, 0);
+    glVertex2f(bx + 3 * s, by + 96 * s);
+    glVertex2f(bx - 3 * s, by + 96 * s);
+    glEnd();
+
+    glColor4f(0.18f, 0.12f, 0.10f, 1.0f);
+    draw_line_dda(bx, by + 88 * s, bx - 34 * s, by + 138 * s);
+    draw_line_dda(bx, by + 90 * s, bx + 30 * s, by + 136 * s);
+    draw_line_bresenham((int)roundf(bx), (int)roundf(by + 78 * s),
+                        (int)roundf(bx - 16 * s), (int)roundf(by + 118 * s));
+    draw_line_bresenham((int)roundf(bx), (int)roundf(by + 82 * s),
+                        (int)roundf(bx + 18 * s), (int)roundf(by + 122 * s));
+
+    glColor4f(0.08f, 0.30f, 0.10f, 1.0f);
+    draw_circle_midpoint((int)roundf(bx), (int)roundf(by + 138 * s), (int)roundf(24 * s));
+    draw_circle_midpoint((int)roundf(bx - 22 * s), (int)roundf(by + 128 * s), (int)roundf(17 * s));
+    draw_circle_midpoint((int)roundf(bx + 22 * s), (int)roundf(by + 130 * s), (int)roundf(17 * s));
+}
+
 /* ── Sky gradient (IMP-04: theme-specific colors) ───────── */
 void draw_sky(void)
 {
@@ -9,31 +91,55 @@ void draw_sky(void)
     switch (level.theme)
     {
     case 1: /* TEMPLE — indigo twilight */
-        r1=0.20f; g1=0.22f; b1=0.54f;
-        r2=0.08f; g2=0.10f; b2=0.34f;
+        r1 = 0.20f;
+        g1 = 0.22f;
+        b1 = 0.54f;
+        r2 = 0.08f;
+        g2 = 0.10f;
+        b2 = 0.34f;
         break;
     case 2: /* VILLAGE — amber dusk */
-        r1=0.52f; g1=0.30f; b1=0.14f;
-        r2=0.22f; g2=0.12f; b2=0.08f;
+        r1 = 0.52f;
+        g1 = 0.30f;
+        b1 = 0.14f;
+        r2 = 0.22f;
+        g2 = 0.12f;
+        b2 = 0.08f;
         break;
     case 3: /* BAMBOO — teal evening */
-        r1=0.14f; g1=0.36f; b1=0.46f;
-        r2=0.06f; g2=0.20f; b2=0.26f;
+        r1 = 0.14f;
+        g1 = 0.36f;
+        b1 = 0.46f;
+        r2 = 0.06f;
+        g2 = 0.20f;
+        b2 = 0.26f;
         break;
     case 4: /* FORTRESS — deep crimson */
-        r1=0.34f; g1=0.12f; b1=0.16f;
-        r2=0.18f; g2=0.06f; b2=0.10f;
+        r1 = 0.34f;
+        g1 = 0.12f;
+        b1 = 0.16f;
+        r2 = 0.18f;
+        g2 = 0.06f;
+        b2 = 0.10f;
         break;
     default: /* RUINS (0) and menu: deep blue night sky */
-        r1=0.18f; g1=0.32f; b1=0.54f;
-        r2=0.08f; g2=0.16f; b2=0.32f;
+        r1 = 0.18f;
+        g1 = 0.32f;
+        b1 = 0.54f;
+        r2 = 0.08f;
+        g2 = 0.16f;
+        b2 = 0.32f;
         break;
     }
     glBegin(GL_QUADS);
-    glColor4f(r1, g1, b1, 1.0f); glVertex2f(0,    0);
-    glColor4f(r1, g1, b1, 1.0f); glVertex2f(1280, 0);
-    glColor4f(r2, g2, b2, 1.0f); glVertex2f(1280, 720);
-    glColor4f(r2, g2, b2, 1.0f); glVertex2f(0,    720);
+    glColor4f(r1, g1, b1, 1.0f);
+    glVertex2f(0, 0);
+    glColor4f(r1, g1, b1, 1.0f);
+    glVertex2f(1280, 0);
+    glColor4f(r2, g2, b2, 1.0f);
+    glVertex2f(1280, 720);
+    glColor4f(r2, g2, b2, 1.0f);
+    glVertex2f(0, 720);
     glEnd();
 }
 
@@ -42,37 +148,33 @@ void draw_night_stars(float game_time)
 {
     /* 48 fixed star positions spread across the sky */
     static const float star_x[] = {
-         42, 110, 195, 278, 360, 445, 530, 615,
-        700, 785, 870, 955,1040,1125,1210,1265,
-         80, 160, 250, 340, 430, 520, 610, 700,
-        790, 880, 970,1060,1150,1240,  30, 120,
+        42, 110, 195, 278, 360, 445, 530, 615,
+        700, 785, 870, 955, 1040, 1125, 1210, 1265,
+        80, 160, 250, 340, 430, 520, 610, 700,
+        790, 880, 970, 1060, 1150, 1240, 30, 120,
         205, 310, 410, 510, 610, 710, 810, 910,
-       1010,1110,1180, 55, 155, 355, 655, 955
-    };
+        1010, 1110, 1180, 55, 155, 355, 655, 955};
     static const float star_y[] = {
-        680,670,690,665,675,685,668,678,
-        688,660,672,682,692,663,673,650,
-        630,640,625,635,645,628,638,648,
-        622,632,642,620,612,605,580,590,
-        570,582,592,560,572,584,564,576,
-        556,568,598,540,550,530,545,535
-    };
+        680, 670, 690, 665, 675, 685, 668, 678,
+        688, 660, 672, 682, 692, 663, 673, 650,
+        630, 640, 625, 635, 645, 628, 638, 648,
+        622, 632, 642, 620, 612, 605, 580, 590,
+        570, 582, 592, 560, 572, 584, 564, 576,
+        556, 568, 598, 540, 550, 530, 545, 535};
     static const float star_size[] = {
-        1.5f,1.2f,1.8f,1.0f,2.0f,1.4f,1.6f,1.2f,
-        1.8f,1.0f,1.5f,2.0f,1.3f,1.7f,1.1f,1.9f,
-        1.4f,1.2f,1.8f,1.6f,1.0f,2.0f,1.3f,1.7f,
-        1.5f,1.1f,1.9f,1.4f,1.6f,1.2f,1.8f,1.0f,
-        2.0f,1.5f,1.3f,1.7f,1.1f,1.9f,1.4f,1.6f,
-        1.2f,1.8f,1.0f,2.0f,1.5f,1.3f,1.7f,1.1f
-    };
+        1.5f, 1.2f, 1.8f, 1.0f, 2.0f, 1.4f, 1.6f, 1.2f,
+        1.8f, 1.0f, 1.5f, 2.0f, 1.3f, 1.7f, 1.1f, 1.9f,
+        1.4f, 1.2f, 1.8f, 1.6f, 1.0f, 2.0f, 1.3f, 1.7f,
+        1.5f, 1.1f, 1.9f, 1.4f, 1.6f, 1.2f, 1.8f, 1.0f,
+        2.0f, 1.5f, 1.3f, 1.7f, 1.1f, 1.9f, 1.4f, 1.6f,
+        1.2f, 1.8f, 1.0f, 2.0f, 1.5f, 1.3f, 1.7f, 1.1f};
     static const float star_phase[] = {
-        0.0f,1.2f,2.4f,0.6f,1.8f,3.0f,0.3f,1.5f,
-        2.7f,0.9f,2.1f,3.3f,0.4f,1.6f,2.8f,0.2f,
-        1.4f,2.6f,0.8f,2.0f,3.2f,0.5f,1.7f,2.9f,
-        0.1f,1.3f,2.5f,0.7f,1.9f,3.1f,0.6f,1.8f,
-        3.0f,0.4f,1.6f,2.8f,0.2f,1.4f,2.6f,0.8f,
-        2.0f,3.2f,0.5f,1.7f,2.9f,0.3f,1.1f,2.3f
-    };
+        0.0f, 1.2f, 2.4f, 0.6f, 1.8f, 3.0f, 0.3f, 1.5f,
+        2.7f, 0.9f, 2.1f, 3.3f, 0.4f, 1.6f, 2.8f, 0.2f,
+        1.4f, 2.6f, 0.8f, 2.0f, 3.2f, 0.5f, 1.7f, 2.9f,
+        0.1f, 1.3f, 2.5f, 0.7f, 1.9f, 3.1f, 0.6f, 1.8f,
+        3.0f, 0.4f, 1.6f, 2.8f, 0.2f, 1.4f, 2.6f, 0.8f,
+        2.0f, 3.2f, 0.5f, 1.7f, 2.9f, 0.3f, 1.1f, 2.3f};
     int n = sizeof(star_x) / sizeof(star_x[0]);
 
     /* Darker theme stars are brighter white; bright-sky themes are dimmer */
@@ -191,19 +293,22 @@ void draw_clouds(float game_time, float cam_x)
     float ox = -cam_x * 0.08f;
 
     /* 12 cloud clusters at different heights and speeds */
-    struct { float bx, by, scale, speed, alpha; } clouds[] = {
-        {  100,  620, 1.2f, 22.0f, 0.18f },
-        {  420,  650, 0.9f, 18.0f, 0.14f },
-        {  750,  600, 1.4f, 25.0f, 0.20f },
-        { 1050,  635, 1.0f, 20.0f, 0.16f },
-        {  220,  580, 0.8f, 15.0f, 0.12f },
-        {  900,  660, 1.1f, 30.0f, 0.22f },
-        {  540,  545, 1.5f, 12.0f, 0.10f },
-        { 1180,  570, 1.0f, 17.0f, 0.13f },
-        {  320,  510, 1.3f, 10.0f, 0.09f },
-        {  800,  525, 0.7f, 28.0f, 0.11f },
-        {  650,  690, 1.6f, 35.0f, 0.24f },
-        { 1100,  500, 0.9f,  8.0f, 0.08f },
+    struct
+    {
+        float bx, by, scale, speed, alpha;
+    } clouds[] = {
+        {100, 620, 1.2f, 22.0f, 0.18f},
+        {420, 650, 0.9f, 18.0f, 0.14f},
+        {750, 600, 1.4f, 25.0f, 0.20f},
+        {1050, 635, 1.0f, 20.0f, 0.16f},
+        {220, 580, 0.8f, 15.0f, 0.12f},
+        {900, 660, 1.1f, 30.0f, 0.22f},
+        {540, 545, 1.5f, 12.0f, 0.10f},
+        {1180, 570, 1.0f, 17.0f, 0.13f},
+        {320, 510, 1.3f, 10.0f, 0.09f},
+        {800, 525, 0.7f, 28.0f, 0.11f},
+        {650, 690, 1.6f, 35.0f, 0.24f},
+        {1100, 500, 0.9f, 8.0f, 0.08f},
     };
     int nc = sizeof(clouds) / sizeof(clouds[0]);
 
@@ -223,7 +328,7 @@ void draw_clouds(float game_time, float cam_x)
 
         /* Dusky cloud made of overlapping circles */
         glColor4f(0.20f, 0.30f, 0.50f, a * 1.5f);
-        draw_circle(cx,          cy,       28 * s, 14);
+        draw_circle(cx, cy, 28 * s, 14);
         draw_circle(cx + 32 * s, cy + 8 * s, 22 * s, 12);
         draw_circle(cx - 28 * s, cy + 6 * s, 20 * s, 12);
         draw_circle(cx + 14 * s, cy + 18 * s, 18 * s, 10);
@@ -231,7 +336,7 @@ void draw_clouds(float game_time, float cam_x)
 
         /* Lighter inner highlight */
         glColor4f(0.30f, 0.42f, 0.64f, a * 0.8f);
-        draw_circle(cx + 6 * s,  cy + 8 * s,  14 * s, 10);
+        draw_circle(cx + 6 * s, cy + 8 * s, 14 * s, 10);
         draw_circle(cx - 12 * s, cy + 10 * s, 11 * s, 10);
     }
 }
@@ -244,30 +349,30 @@ static void draw_single_bird(float bx, float by, float scale, float wing_phase, 
 
     /* Body */
     glBegin(GL_TRIANGLES);
-    glVertex2f(bx - 5 * scale,  by);
-    glVertex2f(bx + 5 * scale,  by);
-    glVertex2f(bx,               by - 4 * scale);
+    glVertex2f(bx - 5 * scale, by);
+    glVertex2f(bx + 5 * scale, by);
+    glVertex2f(bx, by - 4 * scale);
     glEnd();
     /* Head */
     draw_circle(bx + 5 * scale, by - 1 * scale, 3.0f * scale, 8);
 
     /* Left wing */
     glBegin(GL_TRIANGLES);
-    glVertex2f(bx,               by);
-    glVertex2f(bx - 14 * scale,  by - wf);
-    glVertex2f(bx - 7 * scale,   by + 3 * scale);
+    glVertex2f(bx, by);
+    glVertex2f(bx - 14 * scale, by - wf);
+    glVertex2f(bx - 7 * scale, by + 3 * scale);
     glEnd();
     /* Right wing */
     glBegin(GL_TRIANGLES);
-    glVertex2f(bx,               by);
-    glVertex2f(bx + 14 * scale,  by - wf);
-    glVertex2f(bx + 7 * scale,   by + 3 * scale);
+    glVertex2f(bx, by);
+    glVertex2f(bx + 14 * scale, by - wf);
+    glVertex2f(bx + 7 * scale, by + 3 * scale);
     glEnd();
     /* Tail */
     glBegin(GL_TRIANGLES);
-    glVertex2f(bx - 5 * scale,  by);
-    glVertex2f(bx - 9 * scale,  by - 5 * scale);
-    glVertex2f(bx - 9 * scale,  by + 2 * scale);
+    glVertex2f(bx - 5 * scale, by);
+    glVertex2f(bx - 9 * scale, by - 5 * scale);
+    glVertex2f(bx - 9 * scale, by + 2 * scale);
     glEnd();
 }
 
@@ -277,16 +382,19 @@ void draw_birds(float game_time, float cam_x)
     (void)cam_x;
 
     /* Large soaring black birds — slow, high up */
-    struct { float ox, speed, y, scale, alpha; } large_birds[] = {
-        {  100,  80.0f, 600, 1.4f, 0.75f },
-        {  700,  65.0f, 580, 1.2f, 0.65f },
-        { 1200,  90.0f, 560, 1.6f, 0.80f },
-        {  400, 100.0f, 540, 1.0f, 0.60f },
-        {  950,  55.0f, 615, 1.3f, 0.70f },
+    struct
+    {
+        float ox, speed, y, scale, alpha;
+    } large_birds[] = {
+        {100, 80.0f, 600, 1.4f, 0.75f},
+        {700, 65.0f, 580, 1.2f, 0.65f},
+        {1200, 90.0f, 560, 1.6f, 0.80f},
+        {400, 100.0f, 540, 1.0f, 0.60f},
+        {950, 55.0f, 615, 1.3f, 0.70f},
     };
     /* V-06: Bird wrap width matches level width so birds aren't absent at far-right edge */
     float bird_wrap = (level.level_w > 1380.0f) ? 1380.0f : 1380.0f; /* screen-space wrap unchanged */
-    (void)bird_wrap; /* Birds are screen-space; 1380 covers the viewport adequately */
+    (void)bird_wrap;                                                 /* Birds are screen-space; 1380 covers the viewport adequately */
 
     for (int i = 0; i < 5; i++)
     {
@@ -321,21 +429,32 @@ void draw_birds(float game_time, float cam_x)
     float rtl_x = 1280.0f - fmodf(game_time * 110.0f, 1500.0f);
     if (rtl_x > -60 && rtl_x < 1340)
     {
-        draw_single_bird(rtl_x,       640.0f, 1.1f, game_time * 3.0f,        0.60f);
-        draw_single_bird(rtl_x + 35,  625.0f, 0.9f, game_time * 3.0f + 0.8f, 0.50f);
-        draw_single_bird(rtl_x + 65,  635.0f, 0.8f, game_time * 3.0f + 1.4f, 0.45f);
+        draw_single_bird(rtl_x, 640.0f, 1.1f, game_time * 3.0f, 0.60f);
+        draw_single_bird(rtl_x + 35, 625.0f, 0.9f, game_time * 3.0f + 0.8f, 0.50f);
+        draw_single_bird(rtl_x + 65, 635.0f, 0.8f, game_time * 3.0f + 1.4f, 0.45f);
     }
 
     /* Second right-to-left group offset by half cycle */
     float rtl2_x = 1280.0f - fmodf(game_time * 75.0f + 750.0f, 1500.0f);
     if (rtl2_x > -60 && rtl2_x < 1340)
     {
-        draw_single_bird(rtl2_x,      660.0f, 1.0f, game_time * 2.5f,        0.55f);
+        draw_single_bird(rtl2_x, 660.0f, 1.0f, game_time * 2.5f, 0.55f);
         draw_single_bird(rtl2_x + 40, 645.0f, 0.85f, game_time * 2.5f + 1.0f, 0.45f);
     }
 }
 void draw_bare_tree(float bx, float by, float scale)
 {
+    if (tree_demo_mode == 1)
+    {
+        draw_tree_manual_primitive(bx, by, scale);
+        return;
+    }
+    if (tree_demo_mode == 2)
+    {
+        draw_tree_algorithmic(bx, by, scale);
+        return;
+    }
+
     float s = scale;
     glColor4f(0.12f, 0.11f, 0.13f, 1.0f);
     /* trunk — extends to y=0 so it always meets the ground even when camera moves up */
@@ -375,20 +494,45 @@ void draw_bare_tree(float bx, float by, float scale)
 /* ── Hanging cloth strips ───────────────────────────────── */
 void draw_hanging_cloth(float x1, float y1, float x2, float y2)
 {
+    /* Supports so cloth does not appear floating without attachment. */
+    glColor4f(0.18f, 0.12f, 0.09f, 0.95f);
+    draw_rect(x1 - 2, y1, 4, 20);
+    draw_rect(x2 - 2, y2, 4, 20);
+    glColor4f(0.22f, 0.16f, 0.12f, 0.95f);
+    draw_circle(x1, y1, 2.5f, 8);
+    draw_circle(x2, y2, 2.5f, 8);
+
     glColor4f(0.32f, 0.18f, 0.14f, 0.85f);
     float dx = x2 - x1, cx = (x1 + x2) / 2;
-    /* rope */
-    glLineWidth(1.5f);
-    glBegin(GL_LINE_STRIP);
-    for (int i = 0; i <= 16; i++)
+    /* rope: in algorithm mode, draw piecewise DDA segments to mirror Lab 2 style */
+    if (tree_demo_mode == 2)
     {
-        float t = (float)i / 16;
-        float rx = x1 + dx * t;
-        float ry = y1 + (y2 - y1) * t - sinf(t * PI) * 30.0f;
-        glVertex2f(rx, ry);
+        float px = x1;
+        float py = y1;
+        for (int i = 1; i <= 16; i++)
+        {
+            float t = (float)i / 16;
+            float rx = x1 + dx * t;
+            float ry = y1 + (y2 - y1) * t - sinf(t * PI) * 30.0f;
+            draw_line_dda(px, py, rx, ry);
+            px = rx;
+            py = ry;
+        }
     }
-    glEnd();
-    glLineWidth(1.0f);
+    else
+    {
+        glLineWidth(1.5f);
+        glBegin(GL_LINE_STRIP);
+        for (int i = 0; i <= 16; i++)
+        {
+            float t = (float)i / 16;
+            float rx = x1 + dx * t;
+            float ry = y1 + (y2 - y1) * t - sinf(t * PI) * 30.0f;
+            glVertex2f(rx, ry);
+        }
+        glEnd();
+        glLineWidth(1.0f);
+    }
     /* cloth strips hanging down */
     for (int s = 0; s < 5; s++)
     {
@@ -478,6 +622,13 @@ void draw_bg_pagoda(float cx, float y, float scale)
 /* ── Hanging red lanterns ───────────────────────────────── */
 void draw_lantern_string(float x1, float y1, float x2, float y2, int count)
 {
+    /* Endpoint supports to avoid floating string look. */
+    glColor4f(0.20f, 0.14f, 0.08f, 1.0f);
+    draw_rect(x1 - 2, y1, 4, 18);
+    draw_rect(x2 - 2, y2, 4, 18);
+    draw_circle(x1, y1, 2.5f, 8);
+    draw_circle(x2, y2, 2.5f, 8);
+
     glColor4f(0.28f, 0.20f, 0.10f, 1);
     glLineWidth(1.5f);
     glBegin(GL_LINE_STRIP);
@@ -516,6 +667,17 @@ void draw_lantern_string(float x1, float y1, float x2, float y2, int count)
 /* ── Pine tree (Temple / Village theme) ─────────────────── */
 void draw_pine_tree(float bx, float by, float scale)
 {
+    if (tree_demo_mode == 1)
+    {
+        draw_tree_manual_primitive(bx, by, scale);
+        return;
+    }
+    if (tree_demo_mode == 2)
+    {
+        draw_tree_algorithmic(bx, by, scale);
+        return;
+    }
+
     float s = scale;
     glColor4f(0.10f, 0.14f, 0.10f, 1.0f);
     /* Trunk */
@@ -527,15 +689,15 @@ void draw_pine_tree(float bx, float by, float scale)
     glEnd();
     /* Three layered triangular tiers */
     float tiers[][3] = {
-        { 80, 140,  60 }, /* bottom: base_y, top_y, half_width */
-        { 115, 165, 45 },
-        { 145, 195, 30 },
+        {80, 140, 60}, /* bottom: base_y, top_y, half_width */
+        {115, 165, 45},
+        {145, 195, 30},
     };
     for (int i = 0; i < 3; i++)
     {
-        float base  = by + tiers[i][0] * s;
-        float top   = by + tiers[i][1] * s;
-        float hw    = tiers[i][2] * s;
+        float base = by + tiers[i][0] * s;
+        float top = by + tiers[i][1] * s;
+        float hw = tiers[i][2] * s;
         draw_tri(bx - hw, base, bx + hw, base, bx, top);
     }
 }
@@ -543,6 +705,17 @@ void draw_pine_tree(float bx, float by, float scale)
 /* ── Willow tree (Village theme) ─────────────────────────── */
 void draw_willow_tree(float bx, float by, float scale)
 {
+    if (tree_demo_mode == 1)
+    {
+        draw_tree_manual_primitive(bx, by, scale);
+        return;
+    }
+    if (tree_demo_mode == 2)
+    {
+        draw_tree_algorithmic(bx, by, scale);
+        return;
+    }
+
     float s = scale;
     glColor4f(0.10f, 0.14f, 0.10f, 1.0f);
     /* Trunk */
@@ -579,6 +752,17 @@ void draw_willow_tree(float bx, float by, float scale)
 /* ── Cherry blossom tree (Fortress accent) ──────────────── */
 void draw_cherry_tree(float bx, float by, float scale)
 {
+    if (tree_demo_mode == 1)
+    {
+        draw_tree_manual_primitive(bx, by, scale);
+        return;
+    }
+    if (tree_demo_mode == 2)
+    {
+        draw_tree_algorithmic(bx, by, scale);
+        return;
+    }
+
     float s = scale;
     glColor4f(0.14f, 0.10f, 0.10f, 1.0f);
     /* Trunk */
@@ -600,9 +784,13 @@ void draw_cherry_tree(float bx, float by, float scale)
     /* Blossom clusters — muted pink */
     glColor4f(0.38f, 0.22f, 0.28f, 0.85f);
     float bpos[][2] = {
-        { -35, 148 }, { -20, 165 }, { -50, 160 },
-        {  32, 145 }, {  48, 158 }, {  18, 162 },
-        {   5, 172 },
+        {-35, 148},
+        {-20, 165},
+        {-50, 160},
+        {32, 145},
+        {48, 158},
+        {18, 162},
+        {5, 172},
     };
     for (int i = 0; i < 7; i++)
         draw_circle(bx + bpos[i][0] * s, by + bpos[i][1] * s, 20 * s, 12);

@@ -79,6 +79,7 @@ static void mouse_click(int button, int state, int mx, int my)
 
 /* ── Timing ─────────────────────────────────────────────── */
 static int last_ms = 0;
+static float sim_accum = 0.0f;
 
 /* ── ~60 fps frame timer (B2-18) ───────────────────────── */
 static void timer_callback(int val)
@@ -266,7 +267,7 @@ static void draw_world(void)
             float fade_a = e->death_timer / 0.5f; /* 1→0 */
             float r = (e->type == ENEMY_HEAVY) ? 22.0f : 18.0f;
             glColor4f(0.05f, 0.03f, 0.06f, fade_a * 0.85f);
-            draw_circle(e->x, e->y + 14, r,        14); /* lower body */
+            draw_circle(e->x, e->y + 14, r, 14);        /* lower body */
             draw_circle(e->x, e->y + 40, r * 1.1f, 16); /* torso */
             draw_circle(e->x, e->y + 62, r * 0.8f, 12); /* head */
             continue;
@@ -332,17 +333,37 @@ static void draw_world(void)
 /* ── Main display callback ──────────────────────────────── */
 void display(void)
 {
+    const float fixed_dt = 1.0f / 60.0f;
     int now = glutGet(GLUT_ELAPSED_TIME);
-    float dt = (now - last_ms) / 1000.0f;
-    if (dt > 0.05f)
-        dt = 0.05f;
+    float frame_dt = (now - last_ms) / 1000.0f;
+    if (frame_dt < 0.0f)
+        frame_dt = 0.0f;
+    if (frame_dt > 0.10f)
+        frame_dt = 0.10f;
     last_ms = now;
-    game_time += dt;
+
+    /* Visual time always advances smoothly, even outside gameplay. */
+    game_time += frame_dt;
     /* A-02: Wrap at a large multiple of 2π — sinf/cosf stay precise, no discontinuity */
     if (game_time > 2.0f * PI * 1000.0f)
         game_time -= 2.0f * PI * 1000.0f;
 
-    update_game(dt);
+    /* Fixed-step simulation prevents speed spikes and inconsistent hit windows. */
+    if (game_state == STATE_PLAYING)
+    {
+        sim_accum += frame_dt;
+        if (sim_accum > 0.20f)
+            sim_accum = 0.20f;
+        while (sim_accum >= fixed_dt)
+        {
+            update_game(fixed_dt);
+            sim_accum -= fixed_dt;
+        }
+    }
+    else
+    {
+        sim_accum = 0.0f;
+    }
 
     glClear(GL_COLOR_BUFFER_BIT);
     glLoadIdentity();

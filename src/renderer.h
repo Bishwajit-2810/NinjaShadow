@@ -21,11 +21,18 @@ void col_gold(void);
 void col_white(float a);
 
 void draw_circle(float cx, float cy, float r, int segs);
+void draw_circle_midpoint(int cx, int cy, int r);
 void draw_rect(float x, float y, float w, float h);
 void draw_tri(float x1, float y1, float x2, float y2, float x3, float y3);
+void draw_line_dda(float x1, float y1, float x2, float y2);
+void draw_line_bresenham(int x1, int y1, int x2, int y2);
 void draw_rect_rot(float cx, float cy, float w, float h, float angle);
 void draw_ring(float cx, float cy, float r_in, float r_out, int segs);
-void draw_string(float x, float y, const char* str, void* font);
+void draw_string(float x, float y, const char *str, void *font);
+
+/* Teacher demo tree mode: 0=normal, 1=primitive-only, 2=dda/bresenham */
+void set_tree_demo_mode(int mode);
+int get_tree_demo_mode(void);
 
 /* draw_map.c extras */
 void draw_checkpoint(float cx, float y, int triggered, float t);
