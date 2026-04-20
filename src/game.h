@@ -14,13 +14,13 @@
 #define PLAYER_W 28.0f
 #define PLAYER_H 64.0f
 #define GRAVITY 1180.0f
-#define JUMP_VY 590.0f
-#define DBL_JUMP_VY 520.0f
+#define JUMP_VY 500.0f
+#define DBL_JUMP_VY 440.0f
 #define MOVE_SPEED 220.0f
 #define DASH_SPEED 460.0f
 #define WALL_SLIDE_VY (-180.0f)
 #define MAX_FALL_SPD (-900.0f)
-#define MAX_HEALTH 6
+#define MAX_HEALTH 100
 #define SHURIKEN_PER_LEVEL 10
 #define ENEMY_DAMAGE_BAR_MAX 100.0f
 #define ENEMY_DAMAGE_PER_HIT 25.0f

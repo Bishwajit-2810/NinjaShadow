@@ -8,9 +8,9 @@
 #include <AL/alc.h>
 
 /* ── Internal state ─────────────────────────────────────── */
-static int audio_ok = 0;          /* 0 until audio_init succeeds */
+static int audio_ok = 0; /* 0 until audio_init succeeds */
 
-static ALCdevice  *al_device  = NULL;
+static ALCdevice *al_device = NULL;
 static ALCcontext *al_context = NULL;
 
 /* One OpenAL buffer per SFX + BGM track */
@@ -68,42 +68,60 @@ static int load_wav(const char *path, ALuint buf)
         return 0; /* file not yet provided — silent no-op */
 
     /* Read RIFF header */
-    char riff[4]; fread(riff, 1, 4, f);
-    if (memcmp(riff, "RIFF", 4) != 0) { fclose(f); return 0; }
+    char riff[4];
+    fread(riff, 1, 4, f);
+    if (memcmp(riff, "RIFF", 4) != 0)
+    {
+        fclose(f);
+        return 0;
+    }
     fseek(f, 4, SEEK_CUR); /* chunk size */
-    char wave[4]; fread(wave, 1, 4, f);
-    if (memcmp(wave, "WAVE", 4) != 0) { fclose(f); return 0; }
+    char wave[4];
+    fread(wave, 1, 4, f);
+    if (memcmp(wave, "WAVE", 4) != 0)
+    {
+        fclose(f);
+        return 0;
+    }
 
     /* Find fmt and data sub-chunks */
     short num_channels = 0, bits_per_sample = 0;
-    int   sample_rate  = 0;
+    int sample_rate = 0;
     unsigned char *pcm = NULL;
-    int   data_size    = 0;
+    int data_size = 0;
 
     while (!feof(f))
     {
-        char id[4]; unsigned int sz;
-        if (fread(id, 1, 4, f) != 4) break;
-        if (fread(&sz, 4, 1, f)  != 1) break;
+        char id[4];
+        unsigned int sz;
+        if (fread(id, 1, 4, f) != 4)
+            break;
+        if (fread(&sz, 4, 1, f) != 1)
+            break;
 
         if (memcmp(id, "fmt ", 4) == 0)
         {
             short audio_fmt;
-            fread(&audio_fmt,      2, 1, f);
-            fread(&num_channels,   2, 1, f);
-            fread(&sample_rate,    4, 1, f);
+            fread(&audio_fmt, 2, 1, f);
+            fread(&num_channels, 2, 1, f);
+            fread(&sample_rate, 4, 1, f);
             fseek(f, 4, SEEK_CUR); /* byte rate */
             fseek(f, 2, SEEK_CUR); /* block align */
-            fread(&bits_per_sample,2, 1, f);
+            fread(&bits_per_sample, 2, 1, f);
             /* skip any extra fmt bytes */
             int extra = (int)sz - 16;
-            if (extra > 0) fseek(f, extra, SEEK_CUR);
+            if (extra > 0)
+                fseek(f, extra, SEEK_CUR);
         }
         else if (memcmp(id, "data", 4) == 0)
         {
             data_size = (int)sz;
             pcm = (unsigned char *)malloc(data_size);
-            if (!pcm) { fclose(f); return 0; }
+            if (!pcm)
+            {
+                fclose(f);
+                return 0;
+            }
             fread(pcm, 1, data_size, f);
         }
         else
@@ -120,11 +138,19 @@ static int load_wav(const char *path, ALuint buf)
     }
 
     ALenum format;
-    if      (num_channels == 1 && bits_per_sample == 8)  format = AL_FORMAT_MONO8;
-    else if (num_channels == 1 && bits_per_sample == 16) format = AL_FORMAT_MONO16;
-    else if (num_channels == 2 && bits_per_sample == 8)  format = AL_FORMAT_STEREO8;
-    else if (num_channels == 2 && bits_per_sample == 16) format = AL_FORMAT_STEREO16;
-    else { free(pcm); return 0; } /* unsupported depth */
+    if (num_channels == 1 && bits_per_sample == 8)
+        format = AL_FORMAT_MONO8;
+    else if (num_channels == 1 && bits_per_sample == 16)
+        format = AL_FORMAT_MONO16;
+    else if (num_channels == 2 && bits_per_sample == 8)
+        format = AL_FORMAT_STEREO8;
+    else if (num_channels == 2 && bits_per_sample == 16)
+        format = AL_FORMAT_STEREO16;
+    else
+    {
+        free(pcm);
+        return 0;
+    } /* unsupported depth */
 
     alBufferData(buf, format, pcm, data_size, sample_rate);
     free(pcm);
@@ -186,13 +212,16 @@ int audio_init(void)
 /* ── audio_play ─────────────────────────────────────────── */
 void audio_play(SfxId id)
 {
-    if (!audio_ok) return;
-    if (id < 0 || id >= SFX_COUNT) return;
+    if (!audio_ok)
+        return;
+    if (id < 0 || id >= SFX_COUNT)
+        return;
 
     /* Check that the buffer has data (file may not have been provided yet) */
     ALint buf_size = 0;
     alGetBufferi(sfx_buf[id], AL_SIZE, &buf_size);
-    if (buf_size == 0) return;
+    if (buf_size == 0)
+        return;
 
     /* Find a free (not currently playing) source from the pool */
     for (int i = 0; i < SFX_SOURCE_POOL; i++)
@@ -216,16 +245,19 @@ void audio_play(SfxId id)
 /* ── audio_play_bgm ─────────────────────────────────────── */
 void audio_play_bgm(int bgm_id)
 {
-    if (!audio_ok) return;
+    if (!audio_ok)
+        return;
 
     alSourceStop(bgm_source);
 
-    if (bgm_id < 0 || bgm_id >= BGM_COUNT) return;
+    if (bgm_id < 0 || bgm_id >= BGM_COUNT)
+        return;
 
     /* Check that the buffer has data */
     ALint buf_size = 0;
     alGetBufferi(bgm_buf[bgm_id], AL_SIZE, &buf_size);
-    if (buf_size == 0) return;
+    if (buf_size == 0)
+        return;
 
     alSourcei(bgm_source, AL_BUFFER, (ALint)bgm_buf[bgm_id]);
     alSourcePlay(bgm_source);
@@ -234,23 +266,47 @@ void audio_play_bgm(int bgm_id)
 /* ── audio_stop_bgm ─────────────────────────────────────── */
 void audio_stop_bgm(void)
 {
-    if (!audio_ok) return;
+    if (!audio_ok)
+        return;
     alSourceStop(bgm_source);
+}
+
+/* ── audio_stop_all_sfx ────────────────────────────────── */
+void audio_stop_all_sfx(void)
+{
+    if (!audio_ok)
+        return;
+    for (int i = 0; i < SFX_SOURCE_POOL; i++)
+        alSourceStop(sfx_sources[i]);
 }
 
 /* ── audio_cleanup ──────────────────────────────────────── */
 void audio_cleanup(void)
 {
-    if (!audio_ok && !al_context) return;
+    if (!audio_ok && !al_context)
+        return;
 
-    if (bgm_source) { alSourceStop(bgm_source); alDeleteSources(1, &bgm_source); bgm_source = 0; }
+    if (bgm_source)
+    {
+        alSourceStop(bgm_source);
+        alDeleteSources(1, &bgm_source);
+        bgm_source = 0;
+    }
     alDeleteSources(SFX_SOURCE_POOL, sfx_sources);
     alDeleteBuffers(SFX_COUNT, sfx_buf);
     alDeleteBuffers(BGM_COUNT, bgm_buf);
 
     alcMakeContextCurrent(NULL);
-    if (al_context) { alcDestroyContext(al_context); al_context = NULL; }
-    if (al_device)  { alcCloseDevice(al_device);     al_device  = NULL; }
+    if (al_context)
+    {
+        alcDestroyContext(al_context);
+        al_context = NULL;
+    }
+    if (al_device)
+    {
+        alcCloseDevice(al_device);
+        al_device = NULL;
+    }
 
     audio_ok = 0;
 }

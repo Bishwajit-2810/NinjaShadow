@@ -462,8 +462,8 @@ void player_input(Player *p, float dt)
             p->anim.state = ANIM_IDLE;
     }
 
-    /* Jump - handle press state and availability */
-    if (player.jump_pressed && player.jump_available)
+    /* Jump: each key press can trigger one jump action (ground + one air jump). */
+    if (player.jump_pressed)
     {
         int jump_triggered = 0;
         if (player.on_ground)
@@ -473,7 +473,6 @@ void player_input(Player *p, float dt)
             player.on_ground = 0;
             player.jump_count = 1;
             player.anim.state = ANIM_JUMP;
-            player.jump_available = 0; /* Consume the jump */
             jump_triggered = 1;
             audio_play(SFX_JUMP);
         }
@@ -488,7 +487,6 @@ void player_input(Player *p, float dt)
             player.anim.facing = player.on_wall;
             player.jump_count = 2;
             player.anim.state = ANIM_JUMP;
-            player.jump_available = 0;
             jump_triggered = 1;
             audio_play(SFX_JUMP);
         }
@@ -498,7 +496,6 @@ void player_input(Player *p, float dt)
             player.vy = DBL_JUMP_VY;
             player.jump_count = 2;
             player.anim.state = ANIM_JUMP;
-            player.jump_available = 0;
             jump_triggered = 1;
             audio_play(SFX_DOUBLE_JUMP);
         }
@@ -507,13 +504,9 @@ void player_input(Player *p, float dt)
             player.jump_pressed = 0;
     }
 
-    /* Restore jump availability when landing on ground */
-    if (player.on_ground && !player.jump_available)
-    {
-        player.jump_available = 1;
+    /* Landing resets jump budget. */
+    if (player.on_ground && player.jump_count != 0)
         player.jump_count = 0;
-        player.jump_pressed = 0; /* Require a fresh key press to jump again */
-    }
 
     /* Shuriken throw — one-shot per key press, infinite ammo */
     if (p->shuriken_pressed)
@@ -1309,6 +1302,9 @@ static void add_checkpoint(float x, float y)
 /* ── Load level ─────────────────────────────────────────── */
 void load_level(int num)
 {
+    /* Prevent long SFX (e.g., level-complete jingle) from bleeding into next level. */
+    audio_stop_all_sfx();
+
     memset(&level, 0, sizeof(level));
     gems_collected = 0;
     gold_collected = 0;

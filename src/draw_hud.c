@@ -33,25 +33,39 @@ void draw_hud(int health, int max_health, int gems, int gold, int stars, int shu
     draw_tri(52, 675, 56, 675, 54, 671);
     col_black();
 
-    /* ── HEARTS ──────────────────────────────────────── */
-    float heart_x = 100;
-    for (int i = 0; i < max_health; i++)
+    /* ── PLAYER HP BAR ──────────────────────────────── */
     {
-        float hx = heart_x + i * 20.0f, hy = 700.0f;
-        if (i < health)
-            glColor4f(0.92f, 0.12f, 0.12f, 1);
-        else
-            glColor4f(0.28f, 0.10f, 0.10f, 0.5f);
-        draw_circle(hx - 3, hy, 5, 10);
-        draw_circle(hx + 3, hy, 5, 10);
-        draw_tri(hx - 7, hy - 2, hx + 7, hy - 2, hx, hy - 11);
+        float hp_x = 100.0f;
+        float hp_y = 698.0f;
+        float hp_w = 240.0f;
+        float hp_h = 10.0f;
+        float hp_t = (max_health > 0) ? ((float)health / (float)max_health) : 0.0f;
+        if (hp_t < 0.0f)
+            hp_t = 0.0f;
+        if (hp_t > 1.0f)
+            hp_t = 1.0f;
+
+        glColor4f(0.18f, 0.08f, 0.08f, 0.90f);
+        draw_rect(hp_x, hp_y, hp_w, hp_h);
+
+        glColor4f(0.92f, 0.12f, 0.12f, 0.95f);
+        draw_rect(hp_x, hp_y, hp_w * hp_t, hp_h);
+
+        glColor4f(0.82f, 0.82f, 0.88f, 0.80f);
+        glRasterPos2f(hp_x, hp_y - 12.0f);
+        {
+            char hp_str[32];
+            sprintf(hp_str, "HP %d/%d", health, max_health);
+            for (char *c = hp_str; *c; c++)
+                glutBitmapCharacter(GLUT_BITMAP_HELVETICA_10, *c);
+        }
     }
 
     /* ── ENEMY DAMAGE BAR (enemy-only) ───────────────── */
     {
-        float bar_x = 100.0f;
-        float bar_y = 676.0f;
-        float bar_w = 150.0f;
+        float bar_x = 20.0f;
+        float bar_y = 604.0f;
+        float bar_w = 210.0f;
         float bar_h = 8.0f;
         float t = enemy_damage_bar / ENEMY_DAMAGE_BAR_MAX;
         if (t < 0.0f)
