@@ -2475,7 +2475,7 @@ void update_game(float dt)
             player.anim.state = ANIM_DEAD;
             game_state = STATE_GAME_OVER;
             audio_stop_bgm();
-            audio_play(SFX_PLAYER_DEATH);
+            audio_play(SFX_GAME_OVER);
         }
         else
         {
@@ -2497,7 +2497,7 @@ void update_game(float dt)
             player.anim.state = ANIM_DEAD;
             game_state = STATE_GAME_OVER;
             audio_stop_bgm();
-            audio_play(SFX_PLAYER_DEATH);
+            audio_play(SFX_GAME_OVER);
         }
         else
         {
@@ -2513,7 +2513,7 @@ void update_game(float dt)
         player.anim.state = ANIM_DEAD;
         game_state = STATE_GAME_OVER;
         audio_stop_bgm();
-        audio_play(SFX_PLAYER_DEATH);
+        audio_play(SFX_GAME_OVER);
     }
 }
 
