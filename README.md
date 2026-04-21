@@ -3800,7 +3800,7 @@ A: Yes! The game is open-source and encourage community content.
 
 ## Contact & Community
 
-- **GitHub**: (Link to repository)
+- **GitHub**: [NinjaShadow](https://github.com/Bishwajit-2810/NinjaShadow)
 - **Issues**: Report bugs via GitHub Issues
 - **Discussions**: GitHub Discussions for feature requests
 - **Discord**: (Community server coming soon)
@@ -3808,5 +3808,5 @@ A: Yes! The game is open-source and encourage community content.
 ---
 
 **Last updated**: April 16, 2026
-**Version**: 0.1 (Alpha)
+**Version**: 5 (final release)
 **Status**: In active development
