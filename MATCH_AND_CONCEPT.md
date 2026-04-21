@@ -183,7 +183,7 @@ Direct viva line:
 
 ---
 
-## Tree Construction Match (Direct Answer for Teacher)
+## Tree Construction Match
 
 ### How trees are made in Ninja Shadow
 
@@ -720,14 +720,6 @@ Note:
 - The toggle only changes tree/decor rendering style for demonstration.
 
 ---
-
-## Quick Viva Checklist
-
-- Explain trunk and foliage are made from basic primitives.
-- Explain loops generate multiple branches/objects.
-- Explain scale/position parameters reuse same function.
-- Explain camera parallax as transformation over time.
-- Mention Lab 2 and Lab 3 algorithms are conceptually present and can be added explicitly if required by rubric.
 
 ## Final Assessment
 
