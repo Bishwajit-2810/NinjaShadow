@@ -59,6 +59,10 @@ void audio_stop_bgm(void);
 /* Stop all currently playing SFX sources (used on hard state transitions). */
 void audio_stop_all_sfx(void);
 
+/* Master audio toggle for settings. enabled=1 plays audio, 0 mutes and stops active audio. */
+void audio_set_enabled(int enabled);
+int audio_is_enabled(void);
+
 /* Free all OpenAL resources. Call on clean exit. */
 void audio_cleanup(void);
 

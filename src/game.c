@@ -251,7 +251,9 @@ void resolve_platforms(Player *p)
 
     /* First pass: find all collisions and pick best ground */
     float best_ground_y = -1e9f;
+    float best_ceiling_y = 1e9f;
     int has_ground = 0;
+    int has_ceiling = 0;
     int best_ground_idx = -1; /* index of platform providing ground (for carry) */
 
     for (int i = 0; i < count; i++)
@@ -302,11 +304,21 @@ void resolve_platforms(Player *p)
                     pl->crumble_timer = 0.001f;
             }
         }
-        else if (min_ov == ovt && p->vy >= 0)
+        else if (p->vy > 0)
         {
-            /* Ceiling collision */
-            p->y = ply - p->h;
-            p->vy = 0;
+            /* Upward collision candidate: if player's top crosses platform bottom,
+               treat it as a ceiling hit even at side edges. This blocks corner clipping. */
+            float player_top = py + p->h;
+            int crosses_platform_bottom = (py < ply && player_top >= ply);
+            if (crosses_platform_bottom && ovb <= ovt + 0.5f)
+            {
+                if (ply < best_ceiling_y)
+                {
+                    best_ceiling_y = ply;
+                    has_ceiling = 1;
+                }
+                continue;
+            }
         }
         else if (min_ov == ovl && p->vx > 0)
         {
@@ -322,6 +334,12 @@ void resolve_platforms(Player *p)
             p->vx = 0;
             p->on_wall = 1;
         }
+    }
+
+    if (has_ceiling)
+    {
+        p->y = best_ceiling_y - p->h;
+        p->vy = 0;
     }
 
     /* Apply ground collision if found */
@@ -1343,7 +1361,7 @@ void load_level(int num)
         level.level_w = 3800;
         level.level_h = 720;
         level.theme = 0;
-        level.bgm = 0;
+        level.bgm = BGM_FOREST;
         player.x = 120;
         player.y = 80;
         /* Ground */
@@ -1421,7 +1439,7 @@ void load_level(int num)
         level.level_w = 3800;
         level.level_h = 720;
         level.theme = 1; /* TEMPLE */
-        level.bgm = 0;
+        level.bgm = BGM_TEMPLE;
         player.x = 120;
         player.y = 80;
         add_platform(0, 40, 3800, 40, PLAT_SOLID);
@@ -1497,7 +1515,7 @@ void load_level(int num)
         level.level_w = 4400;
         level.level_h = 720;
         level.theme = 3; /* BAMBOO */
-        level.bgm = 1;
+        level.bgm = BGM_BAMBOO;
         player.x = 120;
         player.y = 80;
         add_platform(0, 40, 4400, 40, PLAT_SOLID);
@@ -1581,7 +1599,7 @@ void load_level(int num)
         level.level_w = 4200;
         level.level_h = 720;
         level.theme = 2; /* VILLAGE */
-        level.bgm = 1;
+        level.bgm = BGM_VILLAGE;
         player.x = 120;
         player.y = 80;
         add_platform(0, 40, 4200, 40, PLAT_SOLID);
@@ -1666,7 +1684,7 @@ void load_level(int num)
         level.level_w = 4800;
         level.level_h = 720;
         level.theme = 4; /* FORTRESS */
-        level.bgm = 2;
+        level.bgm = BGM_FORTRESS;
         player.x = 120;
         player.y = 80;
         add_platform(0, 40, 4800, 40, PLAT_SOLID);
@@ -1759,7 +1777,7 @@ void load_level(int num)
         level.level_w = 4800;
         level.level_h = 720;
         level.theme = theme6;
-        level.bgm = theme6;
+        level.bgm = BGM_FOREST;
         player.x = 120;
         player.y = 80;
         add_platform(0, 40, 4800, 40, PLAT_SOLID);
@@ -1852,7 +1870,7 @@ void load_level(int num)
         level.level_w = 5200;
         level.level_h = 720;
         level.theme = theme7;
-        level.bgm = theme7;
+        level.bgm = BGM_TEMPLE;
         player.x = 120;
         player.y = 80;
         add_platform(0, 40, 5200, 40, PLAT_SOLID);
@@ -1956,7 +1974,7 @@ void load_level(int num)
         level.level_w = 5200;
         level.level_h = 720;
         level.theme = theme8;
-        level.bgm = theme8;
+        level.bgm = BGM_BAMBOO;
         player.x = 120;
         player.y = 80;
         add_platform(0, 40, 5200, 40, PLAT_SOLID);
@@ -2061,7 +2079,7 @@ void load_level(int num)
         level.level_w = 5200;
         level.level_h = 720;
         level.theme = theme9;
-        level.bgm = theme9;
+        level.bgm = BGM_VILLAGE;
         player.x = 120;
         player.y = 80;
         add_platform(0, 40, 5200, 40, PLAT_SOLID);
@@ -2167,7 +2185,7 @@ void load_level(int num)
         level.level_w = 5200;
         level.level_h = 720;
         level.theme = 4; /* FORTRESS */
-        level.bgm = 4;
+        level.bgm = BGM_FORTRESS;
         player.x = 120;
         player.y = 80;
 
@@ -2342,8 +2360,8 @@ void load_level(int num)
     }
     }
 
-    /* Start BGM for this level's theme (theme 0–4 maps directly to BGM_FOREST–FORTRESS) */
-    audio_play_bgm(level.theme);
+    /* Start per-level scenario BGM (configured above per level case). */
+    audio_play_bgm(level.bgm);
 }
 
 /* ── Enemy-hit warp: teleport to checkpoint (or start) without full-health restore ── */
@@ -2550,6 +2568,16 @@ void key_down(unsigned char k, int x, int y)
             game_state = STATE_PLAYING;
         else if (game_state == STATE_SETTINGS)
             game_state = STATE_PLAYING; /* Esc closes settings */
+    }
+
+    /* Settings: toggle audio with M key. */
+    if (game_state == STATE_SETTINGS && (k == 'm' || k == 'M'))
+    {
+        int enable = !audio_is_enabled();
+        audio_set_enabled(enable);
+        if (enable)
+            audio_play_bgm(level.bgm);
+        return;
     }
 
     /* Teacher-demo tree modes:

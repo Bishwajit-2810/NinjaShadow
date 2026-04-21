@@ -8,7 +8,8 @@
 #include <AL/alc.h>
 
 /* ── Internal state ─────────────────────────────────────── */
-static int audio_ok = 0; /* 0 until audio_init succeeds */
+static int audio_ok = 0;      /* 0 until audio_init succeeds */
+static int audio_enabled = 1; /* Master toggle from settings */
 
 static ALCdevice *al_device = NULL;
 static ALCcontext *al_context = NULL;
@@ -214,6 +215,8 @@ void audio_play(SfxId id)
 {
     if (!audio_ok)
         return;
+    if (!audio_enabled)
+        return;
     if (id < 0 || id >= SFX_COUNT)
         return;
 
@@ -248,6 +251,12 @@ void audio_play_bgm(int bgm_id)
     if (!audio_ok)
         return;
 
+    if (!audio_enabled)
+    {
+        alSourceStop(bgm_source);
+        return;
+    }
+
     alSourceStop(bgm_source);
 
     if (bgm_id < 0 || bgm_id >= BGM_COUNT)
@@ -278,6 +287,25 @@ void audio_stop_all_sfx(void)
         return;
     for (int i = 0; i < SFX_SOURCE_POOL; i++)
         alSourceStop(sfx_sources[i]);
+}
+
+/* ── audio_set_enabled / audio_is_enabled ─────────────── */
+void audio_set_enabled(int enabled)
+{
+    audio_enabled = enabled ? 1 : 0;
+    if (!audio_ok)
+        return;
+
+    if (!audio_enabled)
+    {
+        audio_stop_bgm();
+        audio_stop_all_sfx();
+    }
+}
+
+int audio_is_enabled(void)
+{
+    return audio_enabled;
 }
 
 /* ── audio_cleanup ──────────────────────────────────────── */

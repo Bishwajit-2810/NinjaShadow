@@ -1,5 +1,6 @@
 #include "renderer.h"
 #include "game.h"
+#include "audio.h"
 #include <stdio.h>
 
 /* draw_shuriken is shared - forward declare */
@@ -7,7 +8,6 @@ void draw_shuriken(float cx, float cy, float angle);
 
 void draw_hud(int health, int max_health, int gems, int gold, int stars, int shurikens, float game_time)
 {
-
     /* ── AVATAR ring ──────────────────────────────────── */
     glColor4f(0.40f, 0.40f, 0.50f, 1);
     draw_circle(50, 670, 40, 24);
@@ -33,31 +33,28 @@ void draw_hud(int health, int max_health, int gems, int gold, int stars, int shu
     draw_tri(52, 675, 56, 675, 54, 671);
     col_black();
 
-    /* ── PLAYER HP BAR ──────────────────────────────── */
+    /* ── HEARTS (6 lives, no HP bar) ─────────────────── */
     {
-        float hp_x = 100.0f;
-        float hp_y = 698.0f;
-        float hp_w = 240.0f;
-        float hp_h = 10.0f;
-        float hp_t = (max_health > 0) ? ((float)health / (float)max_health) : 0.0f;
-        if (hp_t < 0.0f)
-            hp_t = 0.0f;
-        if (hp_t > 1.0f)
-            hp_t = 1.0f;
+        int hearts_max = 6;
+        int hearts_now = health;
+        if (hearts_now < 0)
+            hearts_now = 0;
+        if (hearts_now > hearts_max)
+            hearts_now = hearts_max;
 
-        glColor4f(0.18f, 0.08f, 0.08f, 0.90f);
-        draw_rect(hp_x, hp_y, hp_w, hp_h);
-
-        glColor4f(0.92f, 0.12f, 0.12f, 0.95f);
-        draw_rect(hp_x, hp_y, hp_w * hp_t, hp_h);
-
-        glColor4f(0.82f, 0.82f, 0.88f, 0.80f);
-        glRasterPos2f(hp_x, hp_y - 12.0f);
+        float hx0 = 92.0f;
+        float hy = 698.0f;
+        float step = 18.0f;
+        for (int i = 0; i < hearts_max; i++)
         {
-            char hp_str[32];
-            sprintf(hp_str, "HP %d/%d", health, max_health);
-            for (char *c = hp_str; *c; c++)
-                glutBitmapCharacter(GLUT_BITMAP_HELVETICA_10, *c);
+            float hx = hx0 + i * step;
+            if (i < hearts_now)
+                glColor4f(0.95f, 0.15f, 0.20f, 1.0f);
+            else
+                glColor4f(0.35f, 0.20f, 0.24f, 0.75f);
+            draw_circle(hx - 4.0f, hy, 4.0f, 10);
+            draw_circle(hx + 4.0f, hy, 4.0f, 10);
+            draw_tri(hx - 8.0f, hy - 1.0f, hx + 8.0f, hy - 1.0f, hx, hy - 10.0f);
         }
     }
 
@@ -585,6 +582,49 @@ void draw_settings_overlay(void)
         glRasterPos2f(530, row_y);
         for (const char *c = bindings[i][1]; *c; c++)
             glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);
+    }
+
+    /* Audio toggle row */
+    {
+        int enabled = audio_is_enabled();
+        glColor4f(0.70f, 0.75f, 0.80f, 0.85f);
+        glRasterPos2f(280, 272);
+        {
+            const char *lbl = "Audio";
+            for (const char *c = lbl; *c; c++)
+                glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);
+        }
+
+        glColor4f(0.90f, 0.92f, 1.0f, 0.95f);
+        glRasterPos2f(530, 272);
+        {
+            const char *hint = "M key or click toggle";
+            for (const char *c = hint; *c; c++)
+                glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *c);
+        }
+
+        /* Toggle pill: x=[760, 950], y=[248, 288] */
+        glColor4f(0.16f, 0.20f, 0.30f, 0.95f);
+        draw_rect(760, 248, 190, 40);
+        if (enabled)
+            glColor4f(0.20f, 0.72f, 0.35f, 0.95f);
+        else
+            glColor4f(0.72f, 0.22f, 0.22f, 0.95f);
+        draw_rect(enabled ? 852 : 760, 248, 98, 40);
+
+        glColor4f(0.95f, 0.97f, 1.0f, 1.0f);
+        glRasterPos2f(788, 262);
+        {
+            const char *off = "OFF";
+            for (const char *c = off; *c; c++)
+                glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *c);
+        }
+        glRasterPos2f(886, 262);
+        {
+            const char *on = "ON";
+            for (const char *c = on; *c; c++)
+                glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *c);
+        }
     }
 
     /* Close hint */

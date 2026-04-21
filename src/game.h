@@ -20,7 +20,7 @@
 #define DASH_SPEED 460.0f
 #define WALL_SLIDE_VY (-180.0f)
 #define MAX_FALL_SPD (-900.0f)
-#define MAX_HEALTH 100
+#define MAX_HEALTH 6
 #define SHURIKEN_PER_LEVEL 10
 #define ENEMY_DAMAGE_BAR_MAX 100.0f
 #define ENEMY_DAMAGE_PER_HIT 25.0f

@@ -74,6 +74,20 @@ static void mouse_click(int button, int state, int mx, int my)
             game_state = STATE_SETTINGS;
         else if (game_state == STATE_SETTINGS)
             game_state = STATE_PLAYING;
+        return;
+    }
+
+    /* Settings audio toggle hitbox: x=[760,950], y=[248,288] */
+    if (game_state == STATE_SETTINGS)
+    {
+        if (wx >= 760.0f && wx <= 950.0f && wy >= 248.0f && wy <= 288.0f)
+        {
+            int enable = !audio_is_enabled();
+            audio_set_enabled(enable);
+            if (enable)
+                audio_play_bgm(level.bgm);
+            return;
+        }
     }
 }
 
